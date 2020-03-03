@@ -1,5 +1,5 @@
 # OFSAI-Toolkit
-An open-source toolkit for self driving racing car development. 
+An easy-to-use, open-source toolkit for self driving racing car development. Please try and improve on the tools offered and contribute to help everyone. 
 
 Features:
  - Cone detection 
