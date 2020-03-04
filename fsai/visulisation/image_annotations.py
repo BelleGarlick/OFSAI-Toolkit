@@ -3,9 +3,9 @@ import random
 import cv2
 
 
-# TODO Show labels
-def draw(labels_path=None, label_annotations=None, image_path=None, image=None, colours=None, line_width=3):
-    if colours is None: colours = []
+# TODO Show named labels
+def annotate(labels_path=None, label_annotations=None, image_path=None, image=None, colors=None, class_names=None, line_width=3):
+    if colors is None: colors = []
 
     if image_path is not None:
         image = cv2.imread(image_path)
@@ -16,12 +16,12 @@ def draw(labels_path=None, label_annotations=None, image_path=None, image=None, 
                 annotations = file.readlines()
                 for annotation in annotations:
                     class_num, x, y, w, h = [float(x) for x in annotation.split()][0:5]
-                    image = __draw_rectangle(image, class_num, x, y, w, h, colours, line_width)
+                    image = __draw_rectangle(image, class_num, x, y, w, h, colors, line_width)
 
         if label_annotations is not None:
             for annotation in label_annotations:
                 class_num, x, y, w, h = annotation[0:5]
-                image = __draw_rectangle(image, class_num, x, y, w, h, colours, line_width)
+                image = __draw_rectangle(image, class_num, x, y, w, h, colors, line_width)
 
     return image
 

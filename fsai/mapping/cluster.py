@@ -6,7 +6,7 @@ from fsai.objects.point import Point
 
 class Cluster:
     def __init__(self, initial_point: Cone):
-        self.position: Point = initial_point.point
+        self.position: Point = initial_point.pos
         self.points: List[Cone] = [initial_point]
         self.color: int = CONE_COLOR_BLUE
 
@@ -22,7 +22,7 @@ class Cluster:
             # loop through each point in the current cluster
             blue_count, yellow_count, orange_count, big_orange_count = 0, 0, 0, 0
             for cone in self.points:
-                average_point.add(cone.point)
+                average_point.add(cone.pos)
 
                 # increment the count of each colour depending on the colour of the cone
                 blue_count += cone.color == CONE_COLOR_BLUE
