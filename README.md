@@ -17,7 +17,7 @@ TODO:
  - Visualise 3D track
  - Driver model
  - SLAM
-
+ - Compile to Cython
 
 # Contents
 1. Objects
