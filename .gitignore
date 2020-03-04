@@ -1,1 +1,9 @@
 .DS_Store
+/venv/
+*.pyc
+*.trace
+*logs*
+*.jpg
+*.png
+*checkpoints*
+data/*

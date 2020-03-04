@@ -39,14 +39,14 @@ class Map:
 
         # loop though all cones, convert them into local space then add them to the cones
         for cone in local_cones:
-            cone.point.rotate_around(Point(0, 0), car_angle)
-            cone.point.add(car_position)
+            cone.pos.rotate_around(Point(0, 0), car_angle)
+            cone.pos.add(car_position)
 
             # first we need to check if the nearest locked cone is close enough to the current cone. If so
             # then we can ignore this cone and assume it's in the cluster that is now locked, and can therefore
             # just ignore the cone
-            nearest_locked_cone = self.__get_nearest_locked_cluster(cone.point)
-            if nearest_locked_cone is not None and nearest_locked_cone.point.distance(cone.point) < self.MIN_DISTANCE:
+            nearest_locked_cone = self.__get_nearest_locked_cluster(cone.pos)
+            if nearest_locked_cone is not None and nearest_locked_cone.pos.distance(cone.pos) < self.MIN_DISTANCE:
                 # cone is close enough to the closest locked cone that we can ignore it
                 pass
             else:
@@ -72,7 +72,7 @@ class Map:
             # if clusters get too large then we lock it
             # NOTE: you could also lock a cluster if it's too far from the car and large enough - up to you
             if len(cluster.points) > self.MAX_CLUSTER_SIZE:
-                self.locked_clusters.append(Cone(cluster.position, cluster.color))
+                self.locked_clusters.append(Cone(pos=cluster.position, color=cluster.color))
                 clusters_to_remove.append(cluster)
 
             # if cluster is empty delete it
@@ -148,12 +148,12 @@ class Map:
 
             for cone in cluster.points:
                 # calculate the distance of each cone to it's custer's mean position
-                cone_displacement = cone.point.distance(cluster.position)
+                cone_displacement = cone.pos.distance(cluster.position)
                 closest_cluster: Cluster = cluster
 
                 # loop thought each cluster to find if there is a cluster that is closer to the cone in order to move it
                 for potential_cluster in self.clusters:
-                    distance_to_new_cluster = cone.point.distance(potential_cluster.position)
+                    distance_to_new_cluster = cone.pos.distance(potential_cluster.position)
                     if distance_to_new_cluster < cone_displacement:  # if cone is closer to this cluster, move the cone
                         closest_cluster = potential_cluster
                         cone_displacement = distance_to_new_cluster
@@ -182,11 +182,11 @@ class Map:
         :return: returns the locked clusters that is closest
         """
         nearest_locked_cluster = self.locked_clusters[0]
-        cluster_distance = nearest_locked_cluster.point.distance(p)
+        cluster_distance = nearest_locked_cluster.pos.distance(p)
 
         # loop thought all clusters to find the closets point
         for cluster in self.locked_clusters:
-            current_distance = p.distance(cluster.point)
+            current_distance = p.distance(cluster.pos)
 
             # if cluster distance is larger then update the closest point
             if current_distance < cluster_distance:
@@ -206,10 +206,10 @@ class Map:
         if len(self.clusters) + len(self.locked_clusters) > 2:
             for cluster in self.clusters:
                 if len(cluster.points) > self.MINIMUM_CLUSTER_SIZE:
-                    data_points.append(Cone(cluster.position, cluster.color))
+                    data_points.append(Cone(pos=cluster.position, color=cluster.color))
         else:
             for cluster in self.clusters:
-                data_points.append(Cone(cluster.position, cluster.color))
+                data_points.append(Cone(pos=cluster.position, color=cluster.color))
         return data_points
 
     def get_clusters_relative(self, car_pos: Point, car_orientation: float) -> List[Cone]:
