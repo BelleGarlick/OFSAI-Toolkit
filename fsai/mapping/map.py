@@ -115,7 +115,7 @@ class Map:
                 # check the metrics for each cone in the cluster
                 for cone in cluster.points:
                     # add the distance if the cone's distance to the avg error
-                    distance_to_cluster = cone.point.distance(cluster.position)
+                    distance_to_cluster = cone.pos.distance(cluster.position)
                     avg_distance += distance_to_cluster
 
                     # if the displacement is higher than the further value, then update the furthest value
@@ -128,7 +128,7 @@ class Map:
 
                 # if the average cone error is too large then move the cone to a different cluster
                 if avg_distance > self.MIN_DISTANCE / 2:
-                    new_clusters.append(Cluster(furthest_point.point))
+                    new_clusters.append(Cluster(furthest_point))
                     cluster.points.remove(furthest_point)
 
         # add the new clusters to the current clusters
@@ -181,8 +181,10 @@ class Map:
         :param p: The point to get the closest cluster too
         :return: returns the locked clusters that is closest
         """
-        nearest_locked_cluster = self.locked_clusters[0]
-        cluster_distance = nearest_locked_cluster.pos.distance(p)
+        nearest_locked_cluster = None
+        if len(self.locked_clusters) > 0:
+            nearest_locked_cluster = self.locked_clusters[0]
+            cluster_distance = nearest_locked_cluster.pos.distance(p)
 
         # loop thought all clusters to find the closets point
         for cluster in self.locked_clusters:

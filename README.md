@@ -16,13 +16,13 @@ TODO:
  - Yolo Trains Via Data generator where each imagine is loaded differently with random alterations
  - Visualise 3D track
  - Driver model
- - SLAM
+ - SLAM (EKF)
  - Compile to Cython
 
 # Contents
 1. Objects
 2. Visualisations
-3. Cone Detection
+3. Perception
 4. Mapping
 5. Track Boundary Estimation
 
@@ -30,7 +30,7 @@ TODO:
 # 1. Objects
 This repository comes with, and utilises, a few objects that represent objects found in the FS-AI competition.
 
-**Point**  
+### Point 
 Used to represent the position of an object in 2D.
 ```python
 from fsai.objects.point import Point
@@ -38,7 +38,7 @@ from fsai.objects.point import Point
 point = Point(x, y)
 ```
 
-**Cone**  
+### Cone 
 Used to represent a cone in the track. Each cone contains a point object representing the position of a cone, as well as the colour of the cone.  
 
 ```python
@@ -58,22 +58,68 @@ cone = Cone(x=4, y=6, color=CONE_COLOR_ORANGE)  # orange cone at 4, 6
 ```
 
 
-**Line**  
+### Line  
 Object containing two points. Used to represent lines such as track boundaries.
 ```python
 from fsai.objects.line import Line
+
+line = Line(a=Point(0, 0), b=Point(1, 0))
+```
+
+
+### Track  
+An object used to encapsulate cones into one handy class. 
+```python
+from fsai.objects.track import Track
+
+track = Track()
+```
+Additionally this class allows you to save and load tracks in the json format:
+```json
+{
+    "blue_cones": [
+        {"x": 1.25, "y": -14.75},
+        {"x": 5, "y": -15.5}
+    ],
+    "yellow_cones": [
+        {"x": 2.875, "y": -9.875},
+        {"x": 6, "y": -10.375}
+    ],
+    "big_orange_cones": [
+        {"x": -2, "y": -13.625},
+        {"x": -3.75, "y": -12.875}
+    ]
+    "orange_cones": []
+}
+```
+
+```python
+from fsai.objects.track import Track
+
+# Loading
+track = Track("examples/data/tracks/laguna_seca.json")
+# -or-
+track.load_track("examples/data/tracks/brands_hatch.json")
+
+# Saving
+track.save_track("output_track.json")
+# -or-
+with open("file", "w+") as file:
+    file.write(track.to_json())
 ```
 
 # 2. Visualisations
-###Image Annotations
+### Image Annotations
 
 Annotates a given image with given annotations, returning an openCV formatted image.  
 `<class> <x> <y> <w> <h>`
 (Relative to the size of the image)
 
-`annotated_image = annotate(labels_path, label_annotations, image_path, image, colors, class_names, line_width)`  
+```python
+annotated_image = annotate(labels_path, label_annotations, image_path, image, colors, class_names, line_width)
+```  
 
-####Parameters:  
+#### Parameters:  
 `labels_path` - If provided, the labels will be loaded from a file destination  
 `label_annotations` - If provided, the annotations will be draw from the given information  
 `image_path` - If provided the image will load from the provided path  
@@ -83,7 +129,7 @@ Annotates a given image with given annotations, returning an openCV formatted im
 `line_width` - Annotations will be draw with the width provided  
 `returns` - OpenCV Image
     
-####Example Usages:
+#### Example Usages:
  ```python
 from fsai.visulisation.image_annotations import annotate
 
@@ -105,10 +151,10 @@ cv2.waitKey(0)
 ```
 
 
-###2D Track Renderer
+### 2D Track Renderer
 doc coming soon...
 
-# 3. Cone Detection
+# 3. Perception
 doc coming soon...
 
 # 4. Mapping
