@@ -88,7 +88,7 @@ Additionally this class allows you to save and load tracks in the json format:
     "big_orange_cones": [
         {"x": -2, "y": -13.625},
         {"x": -3.75, "y": -12.875}
-    ]
+    ],
     "orange_cones": []
 }
 ```
