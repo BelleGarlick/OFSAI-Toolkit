@@ -2,7 +2,7 @@ import cv2
 
 from fsai.mapping.boundary_estimation import create_boundary
 from fsai.objects.cone import CONE_COLOR_YELLOW, Cone, CONE_COLOR_BLUE
-from fsai.visulisation.track_2d import draw_track
+from fsai.visualisation.track_2d import draw_track
 
 
 blue_cones = [

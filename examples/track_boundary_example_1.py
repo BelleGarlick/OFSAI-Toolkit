@@ -1,7 +1,7 @@
 import cv2
 
 from fsai.objects.track import Track
-from fsai.visulisation.track_2d import draw_track
+from fsai.visualisation.track_2d import draw_track
 
 
 # load track track into cone objects

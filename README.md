@@ -131,14 +131,14 @@ annotated_image = annotate(labels_path, label_annotations, image_path, image, co
     
 #### Example Usages:
  ```python
-from fsai.visulisation.image_annotations import annotate
+from fsai.visualisation.image_annotations import annotate
 
 image = annotate(label_path="labels/0.txt", image_path="images/0.jpg", colors=[(255, 0, 0), (0, 255, 0)], line_width=10)
 cv2.imshow("Cones", image)
 cv2.waitKey(0)
 ```
 ```python
-from fsai.visulisation.image_annotations import annotate
+from fsai.visualisation.image_annotations import annotate
 
 image = cv2.imread("images/1.png")
 annotations = [
