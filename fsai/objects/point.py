@@ -9,9 +9,9 @@ class Point:
     def __str__(self):
         return "x: {}, y: {}".format(self.x, self.y)
 
-    def rotate_around(self, position, car_angle):
-        nx = math.cos(car_angle) * (self.x - position.x) - math.sin(car_angle) * (self.y - position.y) + position.x
-        ny = math.sin(car_angle) * (self.x - position.x) + math.cos(car_angle) * (self.y - position.y) + position.y
+    def rotate_around(self, position, angle):
+        nx = math.cos(angle) * (self.x - position.x) - math.sin(angle) * (self.y - position.y) + position.x
+        ny = math.sin(angle) * (self.x - position.x) + math.cos(angle) * (self.y - position.y) + position.y
 
         self.x = nx
         self.y = ny
@@ -25,4 +25,9 @@ class Point:
         self.y -= point.y
 
     def distance(self, point):
+        """
+        Get the distance between two points
+        :param point: The current position of this object
+        :return: Distance between the two objects
+        """
         return math.hypot(self.x - point.x, self.y - point.y)

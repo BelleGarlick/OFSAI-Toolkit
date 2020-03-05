@@ -2,13 +2,13 @@
 An easy-to-use, open-source toolkit for self driving racing car development. Please try and improve on the tools offered and contribute to help everyone. 
 
 Features:
- - Cone detection 
- - Track Boundary Estimation
- - Cone Mapping
  - Visualise image annotations
+ - Visualise 2D track
+ - Cone detection 
+ - Cone Mapping
+ - Track Boundary Estimation
  
 TODO:
- - Visualise 2D track
  - Midline calculation
  - Racing line calculation
  - On-the-line image annotator (with active learning)
@@ -30,7 +30,7 @@ TODO:
 # 1. Objects
 This repository comes with, and utilises, a few objects that represent objects found in the FS-AI competition.
 
-### Point 
+### 1.1. Point 
 Used to represent the position of an object in 2D.
 ```python
 from fsai.objects.point import Point
@@ -38,7 +38,9 @@ from fsai.objects.point import Point
 point = Point(x, y)
 ```
 
-### Cone 
+***
+
+### 1.2. Cone 
 Used to represent a cone in the track. Each cone contains a point object representing the position of a cone, as well as the colour of the cone.  
 
 ```python
@@ -58,7 +60,9 @@ cone = Cone(x=4, y=6, color=CONE_COLOR_ORANGE)  # orange cone at 4, 6
 ```
 
 
-### Line  
+***
+
+### 1.3. Line  
 Object containing two points. Used to represent lines such as track boundaries.
 ```python
 from fsai.objects.line import Line
@@ -66,8 +70,9 @@ from fsai.objects.line import Line
 line = Line(a=Point(0, 0), b=Point(1, 0))
 ```
 
+***
 
-### Track  
+### 1.4. Track  
 An object used to encapsulate cones into one handy class. 
 ```python
 from fsai.objects.track import Track
@@ -94,6 +99,7 @@ Additionally this class allows you to save and load tracks in the json format:
 ```
 
 ```python
+import json
 from fsai.objects.track import Track
 
 # Loading
@@ -105,19 +111,15 @@ track.load_track("examples/data/tracks/brands_hatch.json")
 track.save_track("output_track.json")
 # -or-
 with open("file", "w+") as file:
-    file.write(track.to_json())
+    file.write(json.dumps(track.to_json()))
 ```
 
 # 2. Visualisations
-### Image Annotations
+### 2.1. Image Annotations
 
 Annotates a given image with given annotations, returning an openCV formatted image.  
-`<class> <x> <y> <w> <h>`
+`<class> <x> <y> <w> <h>`  
 (Relative to the size of the image)
-
-```python
-annotated_image = annotate(labels_path, label_annotations, image_path, image, colors, class_names, line_width)
-```  
 
 #### Parameters:  
 `labels_path` - If provided, the labels will be loaded from a file destination  
@@ -150,9 +152,60 @@ cv2.imshow("Cones", image)
 cv2.waitKey(0)
 ```
 
+***
 
-### 2D Track Renderer
-doc coming soon...
+### 2.2. 2D Track Renderer
+This method is used to draw the given items in the scene onto an image. Cones and lines can be provided,
+additionally the image can be scaled and padded for aesthetic reasons. Colours can be customised to suit
+you liking by altering the method parameters.
+
+#### Parameters:  
+`track` - If provided, the track data will be draw.  
+`cones` - If provided, these cones will be drawn.  
+`blue_cones` - If provided, these cones will be drawn.  
+`yellow_cones` - If provided, these cones will be drawn.  
+`orange_cones` - If provided, these cones will be drawn.  
+`big_orange_cones` - If provided, these cones will be drawn.  
+`blue_lines` - If provided, these lines will be drawn.  
+`yellow_lines` - If provided, these lines will be drawn.  
+`orange_lines` - If provided, these lines will be drawn.  
+`blue_line_colour` - The colour in which to render blue lines.  
+`yellow_line_colour` - The colour in which to render yellow lines.  
+`orange_line_colour` - The colour in which to render orange lines.  
+`blue_cone_colour` - The colour in which to render blue cones.  
+`yellow_cone_colour` - The colour in which to render yellow cones.  
+`orange_cone_colour` - The colour in which to render orange cones.  
+`big_orange_cone_colour` - The colour in which to render big orange cones.  
+`background` - Background greyscale color to draw the scene onto (0 - 255) (int).  
+`scale` - Scale the image of the track.  
+`padding` - Add padding around the image.  
+`return` - OpenCV Image.
+    
+#### Example Usages:
+ ```python
+from fsai.objects.track import Track
+from fsai.visualisation.track_2d import draw_track
+
+track = Track("examples/data/tracks/laguna_seca.json")
+image = draw_track(track=track)
+```
+```python
+from fsai.objects.track import Track
+from fsai.visualisation.track_2d import draw_track
+
+track = Track("examples/data/tracks/imola.json")
+blue_lines, yellow_lines, orange_lines = track.get_boundary()
+
+image = draw_track(
+    track=track,
+    blue_lines=blue_lines,
+    yellow_lines=yellow_lines,
+    orange_lines=orange_lines,
+    background=100,
+    scale=20,
+    padding=50
+)
+```
 
 # 3. Perception
 doc coming soon...

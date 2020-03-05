@@ -32,6 +32,7 @@ def create_boundary(
     orange_boundaries = []
 
     track_graph: Dict[Cone: Set[Cone]] = {}
+
     for triangle in delaunay:
         for i in range(len(triangle)):
             if triangle[i] not in track_graph:
@@ -82,10 +83,10 @@ def get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None
     triangles, invalid = [], []
 
     all_cones = blue_cones + yellow_cones + orange_cones + big_orange_cones
-    triangles = __get_delaunay_triangulations(all_cones)
+    delaunay_triangles = __get_delaunay_triangulations(all_cones)
     missed_cones = set(all_cones)
 
-    for triangle in triangles:
+    for triangle in delaunay_triangles:
         cone_a, cone_b, cone_c = triangle[0], triangle[1], triangle[2]
         triangle_colours = [cone_a.color, cone_b.color, cone_c.color]
 
@@ -107,7 +108,7 @@ def get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None
     return triangles
 
 
-def __get_delaunay_triangulations(all_cones: List[Cone]) -> List[List[Cone, Cone, Cone]]:
+def __get_delaunay_triangulations(all_cones: List[Cone]) -> List[List[Cone]]:
     """
     Create the delaunay triangles for the given cones
     :param all_cones: All the known cones in the map
