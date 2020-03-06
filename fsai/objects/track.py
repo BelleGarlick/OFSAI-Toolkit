@@ -4,6 +4,7 @@ from typing import List, Tuple
 from fsai.mapping.boundary_estimation import create_boundary
 from fsai.objects.cone import Cone, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE, CONE_COLOR_BIG_ORANGE
 from fsai.objects.line import Line
+from fsai.objects.point import Point
 
 
 class Track:
@@ -16,6 +17,9 @@ class Track:
         self.yellow_cones: List[Cone] = []
         self.orange_cones: List[Cone] = []
         self.big_orange_cones: List[Cone] = []
+
+        self.car_pos: Point = None
+        self.car_orientation = 0
 
         # Load the track from json
         if path is not None:
@@ -41,6 +45,12 @@ class Track:
             if "big_orange_cones" in track_json:
                 self.big_orange_cones = [
                     Cone(x=c["x"], y=c["y"], color=CONE_COLOR_BIG_ORANGE) for c in track_json["big_orange_cones"]]
+
+            if "car_orientation" in track_json:
+                self.car_orientation = track_json["car_orientation"]
+
+            if "car_pos" in track_json:
+                self.car_pos = Point(x=track_json["car_pos"]["x"], y=track_json["car_pos"]["y"])
 
     def to_json(self):
         """

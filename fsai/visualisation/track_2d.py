@@ -8,6 +8,7 @@ from fsai.objects.cone import CONE_COLOR_BIG_ORANGE, CONE_COLOR_ORANGE, CONE_COL
 from fsai.objects.line import Line
 from fsai.objects.point import Point
 from fsai.objects.track import Track
+from fsai.objects.waypoint import Waypoint
 
 
 def draw_track(
@@ -21,6 +22,9 @@ def draw_track(
         blue_lines: List[Line] = None,
         yellow_lines: List[Line] = None,
         orange_lines: List[Line] = None,
+
+        waypoints: List[Waypoint] = None,
+        pedestrians: List[Point] = None,
 
         blue_line_colour: Tuple[int, int, int] = (255, 0, 0),
         yellow_line_colour: Tuple[int, int, int] = (0, 255, 255),
@@ -50,6 +54,7 @@ def draw_track(
     :param blue_lines: If provided, these lines will be drawn.
     :param yellow_lines: If provided, these lines will be drawn.
     :param orange_lines: If provided, these lines will be drawn.
+    :param waypoints: If provided, these waypoints will be draw.
     :param blue_line_colour: The colour in which to render blue lines.
     :param yellow_line_colour: The colour in which to render yellow lines.
     :param orange_line_colour: The colour in which to render orange lines.
@@ -79,8 +84,11 @@ def draw_track(
     if yellow_lines is None: yellow_lines = []
     if orange_lines is None: orange_lines = []
 
+    if waypoints is None: waypoints = []
+    if pedestrians is None: pedestrians = []
+
     # Work out bounds based upon all objects in scene
-    min_x, min_y, max_x, max_y = __get_image_bounds(cones, blue_lines + yellow_lines + orange_lines)
+    min_x, min_y, max_x, max_y = __get_image_bounds(cones, blue_lines + yellow_lines + orange_lines, waypoints=waypoints)
     # calculate the scale/padding offset given the calculated boundaries
     x_offset, y_offset = -min_x * scale + padding, -min_y * scale + padding
 
@@ -93,9 +101,18 @@ def draw_track(
     image.fill(background)
 
     # render lines
-    render_lines(image, blue_lines, blue_line_colour, scale, x_offset, y_offset)
-    render_lines(image, yellow_lines, yellow_line_colour, scale, x_offset, y_offset)
-    render_lines(image, orange_lines, orange_line_colour, scale, x_offset, y_offset)
+    for line in blue_lines:
+        render_line(image, line, blue_line_colour, scale, x_offset, y_offset)
+
+    for line in yellow_lines:
+        render_line(image, line, yellow_line_colour, scale, x_offset, y_offset)
+
+    for line in orange_lines:
+        render_line(image, line, orange_line_colour, scale, x_offset, y_offset)
+
+    for line in waypoints:
+        render_line(image, line.line, (100, 100, 100), scale, x_offset, y_offset)
+        render_point(image, line.get_optimum_point(), (0, 255, 0), scale, 4, x_offset, y_offset)
 
     # render cones
     for cone in cones:
@@ -104,12 +121,16 @@ def draw_track(
         if cone.color == CONE_COLOR_YELLOW: color = yellow_cone_colour
         if cone.color == CONE_COLOR_ORANGE: color = orange_cone_colour
         if cone.color == CONE_COLOR_BIG_ORANGE: color = big_orange_cone_colour
-        image = render_point(image, cone.pos, color, scale, 4, x_offset, y_offset)
+        render_point(image, cone.pos, color, scale, 4, x_offset, y_offset)
+
+    for point in pedestrians:
+        if min_x<point.x<max_x and min_y<point.y < max_y:
+            render_point(image, point, (255, 100, 255), scale, 4, x_offset, y_offset)
 
     return image / 255
 
 
-def __get_image_bounds(cones: List[Cone], lines: List[Line]):
+def __get_image_bounds(cones: List[Cone], lines: List[Line], waypoints: List[Waypoint]):
     """
     This method is used to work out the min, max boundaries of a track. These values are used to alter the draw
     positions of objects so that no matter where the track exists in world space it'll still be centered within
@@ -125,11 +146,16 @@ def __get_image_bounds(cones: List[Cone], lines: List[Line]):
         min_y = min(min_y, cone.pos.y)
         max_x = max(max_x, cone.pos.x)
         max_y = max(max_y, cone.pos.y)
-    for lines in lines:
-        min_x = min([min_x, lines.b.x, lines.a.x])
-        min_y = min([min_y, lines.b.y, lines.a.y])
-        max_x = max([max_x, lines.b.x, lines.a.x])
-        max_y = max([max_y, lines.b.y, lines.a.y])
+    for line in lines:
+        min_x = min([min_x, line.b.x, line.a.x])
+        min_y = min([min_y, line.b.y, line.a.y])
+        max_x = max([max_x, line.b.x, line.a.x])
+        max_y = max([max_y, line.b.y, line.a.y])
+    for waypoint in waypoints:
+        min_x = min([min_x, waypoint.line.b.x, waypoint.line.a.x])
+        min_y = min([min_y, waypoint.line.b.y, waypoint.line.a.y])
+        max_x = max([max_x, waypoint.line.b.x, waypoint.line.a.x])
+        max_y = max([max_y, waypoint.line.b.y, waypoint.line.a.y])
 
     if max_x == -math.inf:
         max_x, max_y, min_x, min_y = 0, 0, 0, 0
@@ -166,24 +192,23 @@ def render_point(
     )
 
 
-def render_lines(image, lines: List[Line], colour: Tuple[int, int, int], scale: float, x_offset: int, y_offset: int):
+def render_line(image, line: Line, colour: Tuple[int, int, int], scale: float, x_offset: int, y_offset: int):
     """
     Draw line on the image with the given parameters. Used for drawing track boundary lines.
 
     :param image: Image to render upon.
-    :param lines: List of the lines to render.
+    :param line: Line to render.
     :param colour: Colour of each line.
     :param scale: Scale to render the line.
     :param x_offset: x offset line.
     :param y_offset: y offset line.
     :return: image with the rendered lines.
     """
-    for line in lines:
-        image = cv2.line(
-            image,
-            (int(round(line.a.x * scale + x_offset)), int(round(line.a.y * scale + y_offset))),
-            (int(round(line.b.x * scale + x_offset)), int(round(line.b.y * scale + y_offset))),
-            colour,
-            2
-        )
+    image = cv2.line(
+        image,
+        (int(round(line.a.x * scale + x_offset)), int(round(line.a.y * scale + y_offset))),
+        (int(round(line.b.x * scale + x_offset)), int(round(line.b.y * scale + y_offset))),
+        colour,
+        2
+    )
     return image

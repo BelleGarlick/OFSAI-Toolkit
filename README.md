@@ -169,6 +169,7 @@ you liking by altering the method parameters.
 `blue_lines` - If provided, these lines will be drawn.  
 `yellow_lines` - If provided, these lines will be drawn.  
 `orange_lines` - If provided, these lines will be drawn.  
+`waypoints` - If provided, these waypoints will be draw.  
 `blue_line_colour` - The colour in which to render blue lines.  
 `yellow_line_colour` - The colour in which to render yellow lines.  
 `orange_line_colour` - The colour in which to render orange lines.  
