@@ -1,6 +1,4 @@
 import math
-import time
-from multiprocessing.pool import Pool
 from typing import List, Tuple, Optional
 
 import numpy as np
@@ -15,10 +13,7 @@ from fsai.objects.waypoint import Waypoint
 # Full Track
 # Make sure waypoint.line.a is always on the elft
 # reverse waypoitns
-# Shorten line for car error
-
-# TODO Maybe
-# possibly make it so that you can only connect to blue on one side and yellow on the other
+# remove repeated points
 
 
 def gen_local_waypoints(
@@ -28,38 +23,57 @@ def gen_local_waypoints(
         yellow_boundary: List[Line],
         orange_boundary: List[Line],
         forsight: int = 10,
-        back: int = 10) -> Tuple[List[Waypoint], List[Point]]:
-
+        back: int = 10,
+        margin=0
+) -> Tuple[List[Waypoint], List[Point]]:
     boundary = blue_boundary + yellow_boundary + orange_boundary
 
     # create initial way point surrounding the car
-    waypoint_line = create_waypoint_at_pos(car_pos, boundary)
+    waypoint_line = create_waypoint_at_pos(car_pos, blue_boundary, yellow_boundary, yellow_boundary)
     waypoint_line = Waypoint(line=waypoint_line)
     way_points_lines = [waypoint_line]
 
     forward_lines = []
     last_point = waypoint_line.get_optimum_point()
+    last_angle = car_angle
     for i in range(forsight):
         next_waypoint = get_next_waypoint(
                 starting_point=last_point,
-                direction=car_angle,
-                boundary=boundary,
-                spacing=3,
+                direction=last_angle,
+                blue_boundary=blue_boundary,
+                yellow_boundary=yellow_boundary,
+                orange_boundary=orange_boundary,
+                spacing=2,
                 max_length=20
         )
 
         forward_lines.append(next_waypoint)
-        last_point = next_waypoint.get_optimum_point()
 
-    return way_points_lines + forward_lines, []
+        next_point = next_waypoint.get_optimum_point()
+        last_angle = last_point.angle_to(next_point)
+        last_point = next_point
+
+        if next_point.distance(car_pos) < 4 and i > 3:
+            break
+
+    # apply error margin
+    all_waypoints = way_points_lines + forward_lines
+    all_waypoints = apply_error_margin(all_waypoints, margin)
+
+    return all_waypoints, []
 
 
-def create_waypoint_at_pos(point: Point, boundary):
-    check_lines = [line for line in boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
+def create_waypoint_at_pos(point: Point, blue_boundary, yellow_boundary, orange_boundary):
+    blue_lines = [line for line in blue_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
+    yellow_lines = [line for line in yellow_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
+    orange_lines = [line for line in orange_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
+
     lines: List[Tuple[Line, Line]] = __get_test_lines_around_point(point, count=10)
     smallest_line: Optional[Line] = __get_intersection_line_from_test_lines(
         lines,
-        check_lines
+        blue_lines,
+        yellow_lines,
+        orange_lines
     )
     return smallest_line
 
@@ -68,8 +82,8 @@ def __create_radar_lines(
         initial_point: Point,
         initial_angle: float,
         spacing: float = 2,  # meters
-        line_count: int = 7,
-        angle_span: float = math.pi / 2,
+        line_count: int = 9,
+        angle_span: float = math.pi / 1.4,
         length: float = 10
 ):
     sub_lines: List[Tuple[Line, Line]] = []
@@ -103,13 +117,21 @@ def __create_radar_lines(
 def get_next_waypoint(
     starting_point: Point,
     direction: float,
-    boundary: List[Line],
+    blue_boundary: List[Line],
+    yellow_boundary: List[Line],
+    orange_boundary: List[Line],
     spacing: float = 3,
     max_length: float = 20
 ) -> Waypoint:
     distance = (spacing**2 + max_length**2) ** (1/2)
-    plausible_boundaries = [
-        boundary_line for boundary_line in boundary
+    plausible_blue_boundaries = [
+        boundary_line for boundary_line in blue_boundary
+        if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
+    plausible_yellow_boundaries = [
+        boundary_line for boundary_line in yellow_boundary
+        if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
+    plausible_orange_boundaries = [
+        boundary_line for boundary_line in orange_boundary
         if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
 
     radar_lines = __create_radar_lines(
@@ -118,24 +140,30 @@ def get_next_waypoint(
         spacing=spacing,
         length=max_length
     )
+
     smallest_line: Optional[Line] = __get_intersection_line_from_test_lines(
         radar_lines,
-        plausible_boundaries
+        plausible_blue_boundaries,
+        plausible_yellow_boundaries,
+        plausible_orange_boundaries
     )
     return Waypoint(line=smallest_line)
 
 
 def __get_intersection_line_from_test_lines(
         lines: List[Tuple[Line, Line]],
-        track_boundary: List[Line]
+        blue_boundary: List[Line],
+        yellow_boundary: List[Line],
+        orange_boundary: List[Line],
 ) -> Optional[Line]:
     smallest_line: Optional[Line] = None
     closest_distance = math.inf
 
     for line in lines:
         center_points = line[0].b
-        points_a: List[Point] = __get_intersection_points(line[0], track_boundary)
-        points_b: List[Point] = __get_intersection_points(line[1], track_boundary)
+        # TODO Choose blue left or blue right
+        points_a: List[Point] = __get_intersection_points(line[0], blue_boundary + orange_boundary)
+        points_b: List[Point] = __get_intersection_points(line[1], yellow_boundary + orange_boundary)
 
         if len(points_a) == 0:
             points_a = [line[0].a]
@@ -178,4 +206,14 @@ def __get_intersection_points(
         if point is not None:
             points.append(point)
     return points
+
+
+def apply_error_margin(waypoints: List[Waypoint], margin: float) -> List[Waypoint]:
+    # TODO make sure lines can't be reversed if margin is too large
+    for waypoint in waypoints:
+        normalised_point = waypoint.line.normalise()
+        normalised_point = normalised_point * margin
+        waypoint.line.a.add(normalised_point)
+        waypoint.line.b.sub(normalised_point)
+    return waypoints
 

@@ -1,5 +1,5 @@
 import json
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from fsai.mapping.boundary_estimation import create_boundary
 from fsai.objects.cone import Cone, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE, CONE_COLOR_BIG_ORANGE
@@ -18,7 +18,7 @@ class Track:
         self.orange_cones: List[Cone] = []
         self.big_orange_cones: List[Cone] = []
 
-        self.car_pos: Point = None
+        self.car_pos: Optional[Point] = None
         self.car_orientation = 0
 
         # Load the track from json

@@ -61,3 +61,6 @@ class Point:
                     closest_point = point
 
             return [closest_point]
+
+    def angle_to(self, point):
+        return math.atan2(point.y - self.y, point.x - self.x)

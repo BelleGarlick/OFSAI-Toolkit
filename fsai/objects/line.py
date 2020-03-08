@@ -8,6 +8,13 @@ class Line:
         self.a = a
         self.b = b
 
+    def normalise(self) -> Point:
+        normalisation = self.b - self.a
+        length = normalisation.distance(Point(0, 0))
+        normalisation.x /= length
+        normalisation.y /= length
+        return normalisation
+
     def intersects(self, line) -> Optional[Point]:
         # convert fixed lines into y=mx+c ordinates
         a1 = line.b.y - line.a.y

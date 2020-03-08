@@ -2,6 +2,9 @@
   <dictionary name="samgarlick">
     <words>
       <w>darknet</w>
+      <w>delaunay</w>
+      <w>waypoint</w>
+      <w>waypoints</w>
     </words>
   </dictionary>
 </component>
