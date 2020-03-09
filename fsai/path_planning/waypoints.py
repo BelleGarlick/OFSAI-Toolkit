@@ -1,8 +1,6 @@
 import math
 from typing import List, Tuple, Optional
 
-import numpy as np
-
 from fsai.objects.line import Line
 from fsai.objects.point import Point
 from fsai.objects.waypoint import Waypoint
@@ -10,11 +8,25 @@ from fsai.objects.waypoint import Waypoint
 
 # TODO
 # Bias the waypoitns
-# Make sure waypoint.line.a is always on the left
-# reverse waypoitns
 # ability to generate evenly spaced
-# what happens if only one side is found
+# what happens if only one side is found -> does it lock?
+# remove similar waypoints in a row to optimise lag
 
+# Read me todo
+#  everything as normal
+# add comments through out this
+# propergate all values upwards
+# add custom readme to packages for mapping
+
+# Examples TODO
+# Show basic, 10 font 5 back with custom spacing
+# show margin
+# show full track (/w & !/w overlap)
+# missing boundary modes
+# biasing effects
+# generate evenly spaced
+# decimate
+# smooth lines out a lil to that they overlap less
 
 def gen_local_waypoints(
         car_pos: Point,
@@ -23,12 +35,11 @@ def gen_local_waypoints(
         yellow_boundary: List[Line],
         orange_boundary: List[Line],
         forsight: int = 20,
-        back: int = 10,
+        negative_forsight: int = 10,
         spacing: float = 2,
         margin=0,
         overlap=False
 ) -> Tuple[List[Waypoint], List[Point]]:
-    boundary = blue_boundary + yellow_boundary + orange_boundary
 
     # create initial way point surrounding the car
     lines, waypoint_line = create_waypoint_at_pos(car_pos, blue_boundary, yellow_boundary, orange_boundary)
@@ -42,11 +53,10 @@ def gen_local_waypoints(
         blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary
     )
 
-    reversed_lines = []
-    # reversed_lines = create_frontal_waypoints(
-    #     initial_point=initial_point, initial_angle=-car_angle, count=forsight, spacing=spacing, overlap=overlap, reversed=True,
-    #     blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary
-    # )
+    reversed_lines = create_frontal_waypoints(
+        initial_point=initial_point, initial_angle=car_angle + math.pi, count=negative_forsight, spacing=spacing, overlap=overlap, reverse=True,
+        blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary
+    )
 
     # apply error margin
     all_waypoints = way_points_lines + forward_lines + reversed_lines
@@ -70,7 +80,7 @@ def create_waypoint_at_pos(point: Point, blue_boundary, yellow_boundary, orange_
     return lines, smallest_line
 
 
-def create_frontal_waypoints(initial_point: Point, initial_angle: float, count: int, spacing: float, blue_boundary: List[Line], yellow_boundary: List[Line], orange_boundary: List[Line], overlap=False, reversed=False):
+def create_frontal_waypoints(initial_point: Point, initial_angle: float, count: int, spacing: float, blue_boundary: List[Line], yellow_boundary: List[Line], orange_boundary: List[Line], overlap=False, reverse=False):
     forward_lines = []
     last_point: Point = initial_point
     last_angle: float = initial_angle
@@ -83,7 +93,7 @@ def create_frontal_waypoints(initial_point: Point, initial_angle: float, count: 
             orange_boundary=orange_boundary,
             spacing=spacing,
             max_length=20,
-            reversed=reversed
+            reverse=reverse
         )
 
         forward_lines.append(next_waypoint)
@@ -102,10 +112,10 @@ def __create_radar_lines(
         initial_point: Point,
         initial_angle: float,
         spacing: float = 2,  # meters
-        line_count: int = 9,
-        angle_span: float = math.pi / 1.4,
+        line_count: int = 13,
+        angle_span: float = math.pi,
         length: float = 10,
-        reversed=False
+        reverse=False
 ):
     sub_lines: List[Tuple[Line, Line]] = []
 
@@ -115,12 +125,11 @@ def __create_radar_lines(
 
         la = Point(p.x, p.y - length)
         lb = Point(p.x, p.y + length)
-        if reversed: la, lb = lb, la
+        if reverse: la, lb = lb, la
 
         la.rotate_around(la, initial_angle)
         lb.rotate_around(lb, initial_angle)
 
-        if reversed: la, lb = lb, la
         sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
 
     else:
@@ -133,7 +142,7 @@ def __create_radar_lines(
 
             la = Point(p.x, p.y - length / 2)
             lb = Point(p.x, p.y + length / 2)
-            if reversed: la, lb = lb, la
+            if reverse: la, lb = lb, la
 
             la.rotate_around(p, current_angle)
             lb.rotate_around(p, current_angle)
@@ -149,7 +158,7 @@ def get_next_waypoint(
     orange_boundary: List[Line],
     spacing: float = 3,
     max_length: float = 20,
-    reversed=False
+    reverse=False
 ) -> Waypoint:
     distance = (spacing**2 + max_length**2) ** (1/2)
     plausible_blue_boundaries = [
@@ -167,7 +176,7 @@ def get_next_waypoint(
         initial_angle=direction,
         spacing=spacing,
         length=max_length,
-        reversed=reversed
+        reverse=reverse
     )
 
     smallest_line: Optional[Line] = __get_intersection_line_from_test_lines(

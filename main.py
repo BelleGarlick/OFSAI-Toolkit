@@ -7,15 +7,15 @@ from fsai.path_planning.waypoints import gen_local_waypoints
 from fsai.visualisation.track_2d import draw_track
 
 
-track = Track("examples/data/tracks/azure_circuit.json")
+track = Track("examples/data/tracks/loheac.json")
 blue_lines, yellow_lines, orange_lines = track.get_boundary()
 
 waypoints, points = gen_local_waypoints(
     track.cars[0].pos,
     track.cars[0].orientation,
-    forsight=10,
-    back=10,
-    spacing=2,
+    forsight=20,
+    negative_forsight=20,
+    spacing=1.5,
     blue_boundary=blue_lines,
     yellow_boundary=yellow_lines,
     orange_boundary=orange_lines,

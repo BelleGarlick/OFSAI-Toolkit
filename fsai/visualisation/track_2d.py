@@ -4,6 +4,7 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
+from fsai.objects.car import Car
 from fsai.objects.cone import CONE_COLOR_BIG_ORANGE, CONE_COLOR_ORANGE, CONE_COLOR_YELLOW, CONE_COLOR_BLUE, Cone
 from fsai.objects.line import Line
 from fsai.objects.point import Point
@@ -13,6 +14,7 @@ from fsai.objects.waypoint import Waypoint
 
 def draw_track(
         track: Track = None,
+
         cones: List[Cone] = None,
         blue_cones: List[Cone] = None,
         yellow_cones: List[Cone] = None,
@@ -34,6 +36,8 @@ def draw_track(
         yellow_cone_colour: Tuple[int, int, int] = (0, 255, 255),
         orange_cone_colour: Tuple[int, int, int] = (0, 100, 255),
         big_orange_cone_colour: Tuple[int, int, int] = (0, 0, 255),
+
+        cars: List[Car] = None,
 
         background: int = 0,
 
@@ -87,6 +91,9 @@ def draw_track(
     if waypoints is None: waypoints = []
     if pedestrians is None: pedestrians = []
 
+    if cars is None: cars = []
+    cars = cars + track.cars
+
     # Work out bounds based upon all objects in scene
     min_x, min_y, max_x, max_y = __get_image_bounds(cones, blue_lines + yellow_lines + orange_lines, waypoints=waypoints)
     # calculate the scale/padding offset given the calculated boundaries
@@ -122,6 +129,9 @@ def draw_track(
         if cone.color == CONE_COLOR_ORANGE: color = orange_cone_colour
         if cone.color == CONE_COLOR_BIG_ORANGE: color = big_orange_cone_colour
         render_point(image, cone.pos, color, scale, 4, x_offset, y_offset)
+
+    for car in cars:
+        render_point(image, car.pos, (255, 0, 255), scale, 6, x_offset, y_offset)
 
     for point in pedestrians:
         if min_x<point.x<max_x and min_y<point.y < max_y:
