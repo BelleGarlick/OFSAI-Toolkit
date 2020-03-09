@@ -90,7 +90,7 @@ Additionally this class allows you to save and load tracks in the json format:
         {"x": 2.875, "y": -9.875},
         {"x": 6, "y": -10.375}
     ],
-    "big_orange_cones": [
+    "big_cones": [
         {"x": -2, "y": -13.625},
         {"x": -3.75, "y": -12.875}
     ],
@@ -165,7 +165,7 @@ you liking by altering the method parameters.
 `blue_cones` - If provided, these cones will be drawn.  
 `yellow_cones` - If provided, these cones will be drawn.  
 `orange_cones` - If provided, these cones will be drawn.  
-`big_orange_cones` - If provided, these cones will be drawn.  
+`big_cones` - If provided, these cones will be drawn.  
 `blue_lines` - If provided, these lines will be drawn.  
 `yellow_lines` - If provided, these lines will be drawn.  
 `orange_lines` - If provided, these lines will be drawn.  
@@ -176,7 +176,7 @@ you liking by altering the method parameters.
 `blue_cone_colour` - The colour in which to render blue cones.  
 `yellow_cone_colour` - The colour in which to render yellow cones.  
 `orange_cone_colour` - The colour in which to render orange cones.  
-`big_orange_cone_colour` - The colour in which to render big orange cones.  
+`big_cone_colour` - The colour in which to render big orange cones.  
 `background` - Background greyscale color to draw the scene onto (0 - 255) (int).  
 `scale` - Scale the image of the track.  
 `padding` - Add padding around the image.  

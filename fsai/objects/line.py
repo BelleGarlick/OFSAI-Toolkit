@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 
 from fsai.objects.point import Point
@@ -41,3 +42,9 @@ class Line:
         if min_x <= x <= max_x and min_y <= y <= max_y:
             return Point(x=x, y=y)
         return None
+
+    def angle(self):
+        return math.atan2(self.a.x - self.b.x, self.a.y - self.b.y)
+
+    def copy(self):
+        return Line(a=self.a.copy(), b=self.b.copy())

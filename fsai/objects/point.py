@@ -19,6 +19,9 @@ class Point:
     def __mul__(self, scalar):
         return Point(self.x * scalar, self.y * scalar)
 
+    def copy(self):
+        return Point(self.x, self.y)
+
     def rotate_around(self, position, angle):
         nx = math.cos(angle) * (self.x - position.x) - math.sin(angle) * (self.y - position.y) + position.x
         ny = math.sin(angle) * (self.x - position.x) + math.cos(angle) * (self.y - position.y) + position.y

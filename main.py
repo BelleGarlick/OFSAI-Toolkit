@@ -3,14 +3,14 @@ import time
 import cv2
 
 from fsai.objects.track import Track
-from fsai.path_planning.waypoints import gen_local_waypoints
+from fsai.path_planning.waypoints import gen_local_waypoints, smoothify_waypoints
 from fsai.visualisation.track_2d import draw_track
 
 
 track = Track("examples/data/tracks/loheac.json")
 blue_lines, yellow_lines, orange_lines = track.get_boundary()
 
-waypoints, points = gen_local_waypoints(
+waypoints = gen_local_waypoints(
     track.cars[0].pos,
     track.cars[0].orientation,
     forsight=20,
@@ -19,18 +19,41 @@ waypoints, points = gen_local_waypoints(
     blue_boundary=blue_lines,
     yellow_boundary=yellow_lines,
     orange_boundary=orange_lines,
-    margin=1
+    margin=1,
+    smooth=False
 )
-
 scene = draw_track(
     track=track,
     waypoints=waypoints,
     blue_lines=blue_lines,
     yellow_lines=yellow_lines,
-    orange_lines=orange_lines,
-    pedestrians=points
+    orange_lines=orange_lines
 )
 cv2.imshow("", scene)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
+
+
+waypoints = gen_local_waypoints(
+    track.cars[0].pos,
+    track.cars[0].orientation,
+    forsight=20,
+    negative_forsight=20,
+    spacing=1.5,
+    blue_boundary=blue_lines,
+    yellow_boundary=yellow_lines,
+    orange_boundary=orange_lines,
+    margin=1,
+    smooth=True
+)
+scene = draw_track(
+    track=track,
+    waypoints=waypoints,
+    blue_lines=blue_lines,
+    yellow_lines=yellow_lines,
+    orange_lines=orange_lines
+)
+cv2.imshow("", scene)
+cv2.waitKey(0)
+cv2.destroyAllWindows()

@@ -17,7 +17,7 @@ class Track:
         self.blue_cones: List[Cone] = []
         self.yellow_cones: List[Cone] = []
         self.orange_cones: List[Cone] = []
-        self.big_orange_cones: List[Cone] = []
+        self.big_cones: List[Cone] = []
 
         self.cars: List[Car] = []
 
@@ -42,9 +42,9 @@ class Track:
             if "orange_cones" in track_json:
                 self.orange_cones = [
                     Cone(x=c["x"], y=c["y"], color=CONE_COLOR_ORANGE) for c in track_json["orange_cones"]]
-            if "big_orange_cones" in track_json:
-                self.big_orange_cones = [
-                    Cone(x=c["x"], y=c["y"], color=CONE_COLOR_BIG_ORANGE) for c in track_json["big_orange_cones"]]
+            if "big_cones" in track_json:
+                self.big_cones = [
+                    Cone(x=c["x"], y=c["y"], color=CONE_COLOR_BIG_ORANGE) for c in track_json["big_cones"]]
 
             if "cars" in track_json:
                 for car_json in track_json["cars"]:
@@ -62,7 +62,7 @@ class Track:
             "blue_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.blue_cones],
             "yellow_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.yellow_cones],
             "orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.orange_cones],
-            "big_orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.big_orange_cones],
+            "big_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.big_cones],
             "cars": [
                 {"pos": {"x": car.pos.x, "y": car.pos.y}, "orientation": car.orientation} for car in self.cars
             ]
@@ -86,6 +86,6 @@ class Track:
             blue_cones=self.blue_cones,
             yellow_cones=self.yellow_cones,
             orange_cones=self.orange_cones,
-            big_orange_cones=self.big_orange_cones
+            big_cones=self.big_cones
         )
 

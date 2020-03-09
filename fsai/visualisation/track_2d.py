@@ -19,7 +19,7 @@ def draw_track(
         blue_cones: List[Cone] = None,
         yellow_cones: List[Cone] = None,
         orange_cones: List[Cone] = None,
-        big_orange_cones: List[Cone] = None,
+        big_cones: List[Cone] = None,
 
         blue_lines: List[Line] = None,
         yellow_lines: List[Line] = None,
@@ -35,7 +35,7 @@ def draw_track(
         blue_cone_colour: Tuple[int, int, int] = (255, 0, 0),
         yellow_cone_colour: Tuple[int, int, int] = (0, 255, 255),
         orange_cone_colour: Tuple[int, int, int] = (0, 100, 255),
-        big_orange_cone_colour: Tuple[int, int, int] = (0, 0, 255),
+        big_cone_colour: Tuple[int, int, int] = (0, 0, 255),
 
         cars: List[Car] = None,
 
@@ -54,7 +54,7 @@ def draw_track(
     :param blue_cones: If provided, these cones will be drawn.
     :param yellow_cones: If provided, these cones will be drawn.
     :param orange_cones: If provided, these cones will be drawn.
-    :param big_orange_cones: If provided, these cones will be drawn.
+    :param big_cones: If provided, these cones will be drawn.
     :param blue_lines: If provided, these lines will be drawn.
     :param yellow_lines: If provided, these lines will be drawn.
     :param orange_lines: If provided, these lines will be drawn.
@@ -65,7 +65,7 @@ def draw_track(
     :param blue_cone_colour: The colour in which to render blue cones.
     :param yellow_cone_colour: The colour in which to render yellow cones.
     :param orange_cone_colour: The colour in which to render orange cones.
-    :param big_orange_cone_colour: The colour in which to render big orange cones.
+    :param big_cone_colour: The colour in which to render big orange cones.
     :param background: Background greyscale color to draw the scene onto (0 - 255) (int).
     :param scale: Scale the image of the track.
     :param padding: Add padding around the image.
@@ -76,12 +76,12 @@ def draw_track(
     if blue_cones is not None: cones = cones + blue_cones
     if yellow_cones is not None: cones = cones + yellow_cones
     if orange_cones is not None: cones = cones + orange_cones
-    if big_orange_cones is not None: cones = cones + big_orange_cones
+    if big_cones is not None: cones = cones + big_cones
     if track is not None:
         if track.blue_cones is not None: cones = cones + track.blue_cones
         if track.yellow_cones is not None: cones = cones + track.yellow_cones
         if track.orange_cones is not None: cones = cones + track.orange_cones
-        if track.big_orange_cones is not None: cones = cones + track.big_orange_cones
+        if track.big_cones is not None: cones = cones + track.big_cones
 
     # declare object lines
     if blue_lines is None: blue_lines = []
@@ -127,7 +127,7 @@ def draw_track(
         if cone.color == CONE_COLOR_BLUE: color = blue_cone_colour
         if cone.color == CONE_COLOR_YELLOW: color = yellow_cone_colour
         if cone.color == CONE_COLOR_ORANGE: color = orange_cone_colour
-        if cone.color == CONE_COLOR_BIG_ORANGE: color = big_orange_cone_colour
+        if cone.color == CONE_COLOR_BIG_ORANGE: color = big_cone_colour
         render_point(image, cone.pos, color, scale, 4, x_offset, y_offset)
 
     for car in cars:

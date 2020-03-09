@@ -20,7 +20,7 @@ class Cluster:
             average_point = Point(0, 0)
 
             # loop through each point in the current cluster
-            blue_count, yellow_count, orange_count, big_orange_count = 0, 0, 0, 0
+            blue_count, yellow_count, orange_count, big_count = 0, 0, 0, 0
             for cone in self.points:
                 average_point.add(cone.pos)
 
@@ -28,7 +28,7 @@ class Cluster:
                 blue_count += cone.color == CONE_COLOR_BLUE
                 yellow_count += cone.color == CONE_COLOR_YELLOW
                 orange_count += cone.color == CONE_COLOR_ORANGE
-                big_orange_count += cone.color == CONE_COLOR_BIG_ORANGE
+                big_count += cone.color == CONE_COLOR_BIG_ORANGE
 
             # get the average off
             average_point.x /= len(self.points)

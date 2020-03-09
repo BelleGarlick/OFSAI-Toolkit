@@ -11,20 +11,20 @@ def create_boundary(
     blue_cones: List[Cone] = None,
     yellow_cones: List[Cone] = None,
     orange_cones: List[Cone] = None,
-    big_orange_cones: List[Cone] = None
+    big_cones: List[Cone] = None
 ) -> Tuple[List[Line], List[Line], List[Line]]:
 
     if blue_cones is None: blue_cones = []
     if yellow_cones is None: yellow_cones = []
     if orange_cones is None: orange_cones = []
-    if big_orange_cones is None: big_orange_cones = []
-    big_orange_cones = __merge_big_orange_cones(big_orange_cones)
+    if big_cones is None: big_cones = []
+    big_cones = __merge_big_cones(big_cones)
 
     delaunay = get_delaunay_triangles(
         blue_cones,
         yellow_cones,
         orange_cones,
-        big_orange_cones
+        big_cones
     )
 
     blue_boundaries = []
@@ -74,15 +74,15 @@ def create_boundary(
     return blue_boundaries, yellow_boundaries, orange_boundaries
 
 
-def get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None, big_orange_cones=None):
+def get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None, big_cones=None):
     if blue_cones is None: blue_cones = []
     if yellow_cones is None: yellow_cones = []
     if orange_cones is None: orange_cones = []
-    if big_orange_cones is None: big_orange_cones = []
+    if big_cones is None: big_cones = []
 
     triangles, invalid = [], []
 
-    all_cones = blue_cones + yellow_cones + orange_cones + big_orange_cones
+    all_cones = blue_cones + yellow_cones + orange_cones + big_cones
     delaunay_triangles = __get_delaunay_triangulations(all_cones)
     missed_cones = set(all_cones)
 
@@ -122,16 +122,16 @@ def __get_delaunay_triangulations(all_cones: List[Cone]) -> List[List[Cone]]:
     return delaunay
 
 
-def __merge_big_orange_cones(big_orange_cones: List[Cone]):
+def __merge_big_cones(big_cones: List[Cone]):
     """
     In the FS-AI events, the starting big orange cones come in pairs, however these pairs are essentially treated as
     a single marker which denotes the start line. This method will combine the pairs of cones into discrete markers.
 
-    :param big_orange_cones: List of the big orange cones
+    :param big_cones: List of the big orange cones
     :return: Markers representing the start line markers
     """
     merged_orange_cones: List[Cone] = []
-    for cone in big_orange_cones:
+    for cone in big_cones:
         too_close = False
         for merged_cone in merged_orange_cones:
             too_close = too_close or cone.pos.distance(merged_cone.pos) < 2.75
