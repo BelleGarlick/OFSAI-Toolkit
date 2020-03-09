@@ -31,7 +31,8 @@ class Line:
 
         x = (b2 * c1 - b1 * c2) / delta
         y = (a1 * c2 - a2 * c1) / delta
-        # check te point exists within teh
+
+        # check the point exists within the
         min_x = max(min(line.a.x, line.b.x), min(self.a.x, self.b.x))
         min_y = max(min(line.a.y, line.b.y), min(self.a.y, self.b.y))
         max_x = min(max(line.a.x, line.b.x), max(self.a.x, self.b.x))

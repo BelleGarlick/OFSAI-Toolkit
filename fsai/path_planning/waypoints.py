@@ -10,10 +10,10 @@ from fsai.objects.waypoint import Waypoint
 
 # TODO
 # Bias the waypoitns
-# Full Track
-# Make sure waypoint.line.a is always on the elft
+# Make sure waypoint.line.a is always on the left
 # reverse waypoitns
-# remove repeated points
+# ability to generate evenly spaced
+# what happens if only one side is found
 
 
 def gen_local_waypoints(
@@ -22,42 +22,34 @@ def gen_local_waypoints(
         blue_boundary: List[Line],
         yellow_boundary: List[Line],
         orange_boundary: List[Line],
-        forsight: int = 10,
+        forsight: int = 20,
         back: int = 10,
-        margin=0
+        spacing: float = 2,
+        margin=0,
+        overlap=False
 ) -> Tuple[List[Waypoint], List[Point]]:
     boundary = blue_boundary + yellow_boundary + orange_boundary
 
     # create initial way point surrounding the car
-    waypoint_line = create_waypoint_at_pos(car_pos, blue_boundary, yellow_boundary, yellow_boundary)
+    lines, waypoint_line = create_waypoint_at_pos(car_pos, blue_boundary, yellow_boundary, orange_boundary)
     waypoint_line = Waypoint(line=waypoint_line)
     way_points_lines = [waypoint_line]
 
-    forward_lines = []
-    last_point = waypoint_line.get_optimum_point()
-    last_angle = car_angle
-    for i in range(forsight):
-        next_waypoint = get_next_waypoint(
-                starting_point=last_point,
-                direction=last_angle,
-                blue_boundary=blue_boundary,
-                yellow_boundary=yellow_boundary,
-                orange_boundary=orange_boundary,
-                spacing=2,
-                max_length=20
-        )
+    initial_point = waypoint_line.get_optimum_point()
 
-        forward_lines.append(next_waypoint)
+    forward_lines = create_frontal_waypoints(
+        initial_point=initial_point, initial_angle=car_angle, count=forsight, spacing=spacing, overlap=overlap,
+        blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary
+    )
 
-        next_point = next_waypoint.get_optimum_point()
-        last_angle = last_point.angle_to(next_point)
-        last_point = next_point
-
-        if next_point.distance(car_pos) < 4 and i > 3:
-            break
+    reversed_lines = []
+    # reversed_lines = create_frontal_waypoints(
+    #     initial_point=initial_point, initial_angle=-car_angle, count=forsight, spacing=spacing, overlap=overlap, reversed=True,
+    #     blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary
+    # )
 
     # apply error margin
-    all_waypoints = way_points_lines + forward_lines
+    all_waypoints = way_points_lines + forward_lines + reversed_lines
     all_waypoints = apply_error_margin(all_waypoints, margin)
 
     return all_waypoints, []
@@ -69,13 +61,41 @@ def create_waypoint_at_pos(point: Point, blue_boundary, yellow_boundary, orange_
     orange_lines = [line for line in orange_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
 
     lines: List[Tuple[Line, Line]] = __get_test_lines_around_point(point, count=10)
-    smallest_line: Optional[Line] = __get_intersection_line_from_test_lines(
+    smallest_line = __get_intersection_line_from_test_lines(
         lines,
         blue_lines,
         yellow_lines,
         orange_lines
     )
-    return smallest_line
+    return lines, smallest_line
+
+
+def create_frontal_waypoints(initial_point: Point, initial_angle: float, count: int, spacing: float, blue_boundary: List[Line], yellow_boundary: List[Line], orange_boundary: List[Line], overlap=False, reversed=False):
+    forward_lines = []
+    last_point: Point = initial_point
+    last_angle: float = initial_angle
+    for i in range(count):
+        next_waypoint = get_next_waypoint(
+            starting_point=last_point,
+            direction=last_angle,
+            blue_boundary=blue_boundary,
+            yellow_boundary=yellow_boundary,
+            orange_boundary=orange_boundary,
+            spacing=spacing,
+            max_length=20,
+            reversed=reversed
+        )
+
+        forward_lines.append(next_waypoint)
+
+        next_point = next_waypoint.get_optimum_point()
+        last_angle = last_point.angle_to(next_point)
+        last_point = next_point
+
+        if not overlap:
+            if next_point.distance(initial_point) < spacing * 1.5 and i > 3:
+                break
+    return forward_lines
 
 
 def __create_radar_lines(
@@ -84,7 +104,8 @@ def __create_radar_lines(
         spacing: float = 2,  # meters
         line_count: int = 9,
         angle_span: float = math.pi / 1.4,
-        length: float = 10
+        length: float = 10,
+        reversed=False
 ):
     sub_lines: List[Tuple[Line, Line]] = []
 
@@ -94,8 +115,12 @@ def __create_radar_lines(
 
         la = Point(p.x, p.y - length)
         lb = Point(p.x, p.y + length)
+        if reversed: la, lb = lb, la
+
         la.rotate_around(la, initial_angle)
         lb.rotate_around(lb, initial_angle)
+
+        if reversed: la, lb = lb, la
         sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
 
     else:
@@ -108,6 +133,8 @@ def __create_radar_lines(
 
             la = Point(p.x, p.y - length / 2)
             lb = Point(p.x, p.y + length / 2)
+            if reversed: la, lb = lb, la
+
             la.rotate_around(p, current_angle)
             lb.rotate_around(p, current_angle)
             sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
@@ -121,7 +148,8 @@ def get_next_waypoint(
     yellow_boundary: List[Line],
     orange_boundary: List[Line],
     spacing: float = 3,
-    max_length: float = 20
+    max_length: float = 20,
+    reversed=False
 ) -> Waypoint:
     distance = (spacing**2 + max_length**2) ** (1/2)
     plausible_blue_boundaries = [
@@ -138,7 +166,8 @@ def get_next_waypoint(
         initial_point=starting_point,
         initial_angle=direction,
         spacing=spacing,
-        length=max_length
+        length=max_length,
+        reversed=reversed
     )
 
     smallest_line: Optional[Line] = __get_intersection_line_from_test_lines(
@@ -158,7 +187,7 @@ def __get_intersection_line_from_test_lines(
 ) -> Optional[Line]:
     smallest_line: Optional[Line] = None
     closest_distance = math.inf
-
+    points = []
     for line in lines:
         center_points = line[0].b
         # TODO Choose blue left or blue right
@@ -169,7 +198,7 @@ def __get_intersection_line_from_test_lines(
             points_a = [line[0].a]
         if len(points_b) == 0:
             points_b = [line[1].a]
-
+        points = points + points_a + points_b
         point_a = center_points.get_closest_point(points_a)
         point_b = center_points.get_closest_point(points_b)
 
@@ -189,7 +218,7 @@ def __get_test_lines_around_point(
 
     deliminators = math.pi / count
     for i in range(count):
-        p = Point(x=origin.x - length, y=origin.y)
+        p = Point(x=origin.x + length, y=origin.y)
         p.rotate_around(position=origin, angle=deliminators * i)
         lines.append((Line(a=p, b=origin), Line(a=p - (p - origin) * 2, b=origin)))
 

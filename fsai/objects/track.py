@@ -2,6 +2,7 @@ import json
 from typing import List, Tuple, Optional
 
 from fsai.mapping.boundary_estimation import create_boundary
+from fsai.objects.car import Car
 from fsai.objects.cone import Cone, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE, CONE_COLOR_BIG_ORANGE
 from fsai.objects.line import Line
 from fsai.objects.point import Point
@@ -18,8 +19,7 @@ class Track:
         self.orange_cones: List[Cone] = []
         self.big_orange_cones: List[Cone] = []
 
-        self.car_pos: Optional[Point] = None
-        self.car_orientation = 0
+        self.cars: List[Car] = []
 
         # Load the track from json
         if path is not None:
@@ -46,11 +46,12 @@ class Track:
                 self.big_orange_cones = [
                     Cone(x=c["x"], y=c["y"], color=CONE_COLOR_BIG_ORANGE) for c in track_json["big_orange_cones"]]
 
-            if "car_orientation" in track_json:
-                self.car_orientation = track_json["car_orientation"]
-
-            if "car_pos" in track_json:
-                self.car_pos = Point(x=track_json["car_pos"]["x"], y=track_json["car_pos"]["y"])
+            if "cars" in track_json:
+                for car_json in track_json["cars"]:
+                    car = Car()
+                    car.pos = Point(car_json["pos"]["x"], car_json["pos"]["y"])
+                    car.orientation = car_json["orientation"]
+                    self.cars.append(car)
 
     def to_json(self):
         """
@@ -61,7 +62,10 @@ class Track:
             "blue_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.blue_cones],
             "yellow_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.yellow_cones],
             "orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.orange_cones],
-            "big_orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.big_orange_cones]
+            "big_orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.big_orange_cones],
+            "cars": [
+                {"pos": {"x": car.pos.x, "y": car.pos.y}, "orientation": car.orientation} for car in self.cars
+            ]
         }
 
     def save_track(self, output_path: str):

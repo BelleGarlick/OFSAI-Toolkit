@@ -530,9 +530,13 @@
         }
     ],
     "orange_cones": [],
-    "car_orientation": 2.9,
-    "car_pos": {
-        "x": 5.375,
-        "y": 4
-    }
+    "cars": [
+        {
+            "pos": {
+                "x": 5.375,
+                "y": 4
+            },
+            "orientation": 2.9
+        }
+    ]
 }
