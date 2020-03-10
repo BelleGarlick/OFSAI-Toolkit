@@ -9,7 +9,6 @@ from fsai.objects.waypoint import Waypoint
 # TODO
 # ability to generate evenly spaced
 # what happens if only one side is found -> does it lock? -> Does it hug left
-# remove similar waypoints in a row to optimise lag
 
 # Read me todo
 #  everything as normal
@@ -38,9 +37,9 @@ def gen_local_waypoints(
         orange_boundary: List[Line],
         forsight: int = 20,
         negative_forsight: int = 10,
+        full_track: bool = False,
         spacing: float = 2,
-        margin: float=0,
-        overlap: bool=False,
+        margin: float = 0,
         bias: float = 0,
         bias_strength=0.2,
         smooth=False
@@ -52,13 +51,17 @@ def gen_local_waypoints(
 
     initial_point = initial_waypoint.get_optimum_point()
 
+    if full_track:
+        forsight = 1000
+        negative_forsight = 0
+
     forward_lines = create_frontal_waypoints(
-        initial_point=initial_point, initial_angle=car_angle, count=forsight, spacing=spacing, overlap=overlap,
+        initial_point=initial_point, initial_angle=car_angle, count=forsight, spacing=spacing, overlap=not full_track,
         blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary, bias=bias, bias_strength=bias_strength
     )
 
     reversed_lines = create_frontal_waypoints(
-        initial_point=initial_point, initial_angle=car_angle + math.pi, count=negative_forsight, spacing=spacing, overlap=overlap, reverse=True,
+        initial_point=initial_point, initial_angle=car_angle + math.pi, count=negative_forsight, spacing=spacing, overlap=not full_track, reverse=True,
         blue_boundary=blue_boundary, yellow_boundary=yellow_boundary, orange_boundary=orange_boundary, bias=bias, bias_strength=bias_strength
     )
     reversed_lines.reverse()
@@ -67,7 +70,7 @@ def gen_local_waypoints(
     all_waypoints = reversed_lines + [initial_waypoint] + forward_lines
     all_waypoints = apply_error_margin(all_waypoints, margin)
 
-    return smoothify_waypoints(all_waypoints) if smooth else all_waypoints
+    return smoothify(all_waypoints, full_track) if smooth else all_waypoints
 
 
 def create_waypoint_at_pos(point: Point, angle: float, blue_boundary, yellow_boundary, orange_boundary):
@@ -278,33 +281,72 @@ def apply_error_margin(waypoints: List[Waypoint], margin: float) -> List[Waypoin
         waypoint.line.b.sub(normalised_point)
     return waypoints
 
-# TODO
-# currently losses the last two waypoints, this shouldn't happen
-# also cehck it works when is full track
-def smoothify_waypoints(
-        current_lines: List[Waypoint]
+
+def smoothify(
+        current_lines: List[Waypoint],
+        full_track: bool
 ):
     smooth_waypoints = []
 
-    for i in range(1, len(current_lines) - 1, 1):
+    if full_track:
+        index_range = range(len(current_lines))
+    else:
+        index_range = range(1, len(current_lines) - 1, 1)
+
+    for i in index_range:
         new_waypoint: Waypoint = current_lines[i].copy()
 
-        prev = current_lines[i - 1].line.angle()
-        curr = current_lines[i].line.angle()
-        next = current_lines[i + 1].line.angle()
+        pre = current_lines[i - 1].line.angle()
+        cur = current_lines[i].line.angle()
+        nex = current_lines[(i + 1) % len(current_lines)].line.angle()
 
-        x, y = math.cos(prev), math.sin(prev)
-        x, y = x + math.cos(curr), y + math.sin(curr)
-        x, y = x + math.cos(next), y + math.sin(next)
+        x, y = math.cos(pre), math.sin(pre)
+        x, y = x + math.cos(cur), y + math.sin(cur)
+        x, y = x + math.cos(nex), y + math.sin(nex)
         average_angle = math.atan2(y, x)
-        delta_angle = curr - average_angle
+        delta_angle = cur - average_angle
 
         current_point = new_waypoint.get_optimum_point()
         new_waypoint.line.a.rotate_around(current_point, delta_angle)
         new_waypoint.line.b.rotate_around(current_point, delta_angle)
         smooth_waypoints.append(new_waypoint)
 
+    if not full_track:
+        smooth_waypoints = [current_lines[0]] + smooth_waypoints + [current_lines[-1]]
+
     return smooth_waypoints
+
+
+def decimate_waypoints(waypoints: List[Waypoint], spread=0, max_gap: int = 3, threshold: float = 0.2) -> List[Waypoint]:
+    all_waypoints: List[Tuple[Waypoint, float]] = [(waypoint, 0) for waypoint in waypoints]
+
+    for i in range(1, len(all_waypoints) - 1):
+        p = waypoints[i - 1].line.angle()
+        c = waypoints[i].line.angle()
+        n = waypoints[(i + 1) % len(waypoints)].line.angle()
+
+        a = abs((p - c + math.pi) % (math.pi*2) - math.pi)
+        a += abs((n - c + math.pi) % (math.pi*2) - math.pi)
+
+        if a > 0.1:
+            for j in range(-(spread + 1), spread + 1, 1):
+                index = (i + j) % len(waypoints)
+                all_waypoints[index] = (all_waypoints[index][0], max(a, all_waypoints[index][1]))
+
+    decimated_waypoints = []
+    last_added_waypoint = -max_gap
+    for i in range(len(all_waypoints)):
+        sticky = all_waypoints[i][0].sticky
+        angled = all_waypoints[i][1] > threshold
+        gap = i - last_added_waypoint >= max_gap
+        ends = i == len(all_waypoints) - 1 or i == 0
+
+        if sticky or angled or gap or ends:
+            last_added_waypoint = i
+            decimated_waypoints.append(all_waypoints[i][0])
+
+    return decimated_waypoints
+
 
 # /**
 #  * Distribute values from -1 - 1 between 0 - 1. A gaussian distribution
@@ -315,4 +357,3 @@ def smoothify_waypoints(
 #  */
 def distribute(x: float):
     return max(.0, 1 - abs(x))
-
