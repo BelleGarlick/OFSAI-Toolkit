@@ -39,7 +39,7 @@ class Line:
         max_x = min(max(line.a.x, line.b.x), max(self.a.x, self.b.x))
         max_y = min(max(line.a.y, line.b.y), max(self.a.y, self.b.y))
 
-        if min_x <= x <= max_x and min_y <= y <= max_y:
+        if min_x <= round(1000 * x)/1000 <= max_x and min_y <= round(1000 * y)/1000 <= max_y:
             return Point(x=x, y=y)
         return None
 
@@ -48,3 +48,6 @@ class Line:
 
     def copy(self):
         return Line(a=self.a.copy(), b=self.b.copy())
+
+    def length(self):
+        return math.hypot(self.a.x - self.b.x, self.a.y - self.b.y)

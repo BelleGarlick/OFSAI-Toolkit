@@ -1,64 +1,35 @@
-import time
-
 import cv2
 
 from fsai.objects.track import Track
+from fsai.path_planning.target_line import get_points_from_waypoints
 from fsai.path_planning.waypoints import gen_local_waypoints, decimate_waypoints
 from fsai.visualisation.track_2d import draw_track
 
 
-track = Track("examples/data/tracks/loheac.json")
+track = Track("examples/data/tracks/brands_hatch.json")
 blue_lines, yellow_lines, orange_lines = track.get_boundary()
 
 waypoints = gen_local_waypoints(
     track.cars[0].pos,
     track.cars[0].orientation,
-    forsight=20,
-    negative_forsight=20,
-    spacing=1.5,
+    full_track=True,
     blue_boundary=blue_lines,
     yellow_boundary=yellow_lines,
     orange_boundary=orange_lines,
-    margin=1,
-    smooth=True
+    spacing=1,
+    smooth=True,
+    margin=1
 )
+
+waypoints = decimate_waypoints(waypoints)
+
 scene = draw_track(
     track=track,
-    waypoints=waypoints,
+    waypoints=[],
     blue_lines=blue_lines,
     yellow_lines=yellow_lines,
-    orange_lines=orange_lines
-)
-# cv2.imshow("", scene)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
-waypoints[20].sticky = True
-
-waypoints = decimate_waypoints(
-    waypoints,
-    spread=2,
-    max_gap=3,
-    threshold=0.4
-)
-
-# waypoints = gen_local_waypoints(
-#     track.cars[0].pos,
-#     track.cars[0].orientation,
-#     full_track=True,
-#     spacing=1.5,
-#     blue_boundary=blue_lines,
-#     yellow_boundary=yellow_lines,
-#     orange_boundary=orange_lines,
-#     margin=1,
-#     smooth=True
-# )
-scene = draw_track(
-    track=track,
-    waypoints=waypoints,
-    blue_lines=blue_lines,
-    yellow_lines=yellow_lines,
-    orange_lines=orange_lines
+    orange_lines=orange_lines,
+    target_line=get_points_from_waypoints(waypoints)
 )
 cv2.imshow("", scene)
 cv2.waitKey(0)

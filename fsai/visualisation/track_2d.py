@@ -11,6 +11,8 @@ from fsai.objects.point import Point
 from fsai.objects.track import Track
 from fsai.objects.waypoint import Waypoint
 
+# TODO Recomment all of this
+
 
 def draw_track(
         track: Track = None,
@@ -27,6 +29,7 @@ def draw_track(
 
         waypoints: List[Waypoint] = None,
         pedestrians: List[Point] = None,
+        target_line: List[Point] = None,
 
         blue_line_colour: Tuple[int, int, int] = (255, 0, 0),
         yellow_line_colour: Tuple[int, int, int] = (0, 255, 255),
@@ -90,6 +93,7 @@ def draw_track(
 
     if waypoints is None: waypoints = []
     if pedestrians is None: pedestrians = []
+    if target_line is None: target_line = []
 
     if cars is None: cars = []
     cars = cars + track.cars
@@ -136,6 +140,9 @@ def draw_track(
     for point in pedestrians:
         if min_x<point.x<max_x and min_y<point.y < max_y:
             render_point(image, point, (255, 100, 255), scale, 4, x_offset, y_offset)
+
+    for p in range(len(target_line) - 1):
+        render_line(image, Line(a=target_line[p], b=target_line[p+1]), (255, 0, 255), scale, x_offset, y_offset)
 
     return image / 255
 
