@@ -106,12 +106,18 @@ def create_waypoint_at_pos(point: Point, angle: float, blue_boundary, yellow_bou
     orange_lines = [line for line in orange_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
 
     # TODO PROPERGATE VALUES UPWATDS
-    lines: List[Tuple[Line, Line]] = __get_radar_lines_around_point(point, angle, count=10)
+    lines: List[Tuple[Line, Line]] = __get_radar_lines_around_point(
+        point, angle, count=10, length=10, total_span=math.pi / 2
+    )
+    # TODO propergate upwards
     smallest_line: Waypoint = __get_most_perpendicular_line_to_boundary(
         lines,
         blue_lines,
         yellow_lines,
-        orange_lines
+        orange_lines,
+        bias=0,
+        bias_strength=0.2,
+        left_colour=BLUE_ON_LEFT
     )
     return smallest_line
 
@@ -177,13 +183,15 @@ def get_next_waypoint(
         reverse=reverse
     )
 
+    # TODO propergate upwards
     smallest_line: Optional[Waypoint] = __get_most_perpendicular_line_to_boundary(
         radar_lines,
         plausible_blue_boundaries,
         plausible_yellow_boundaries,
         plausible_orange_boundaries,
         bias=bias,
-        bias_strength=bias_strength
+        bias_strength=bias_strength,
+        left_colour=BLUE_ON_LEFT
     )
     return smallest_line
 
@@ -199,39 +207,26 @@ def __create_radar_lines(
 ):
     sub_lines: List[Tuple[Line, Line]] = []
 
-    if line_count <= 1:
+    angle_change = angle_span / (line_count - 1)
+    starting = initial_angle - angle_span / 2
+    for i in range(line_count):
+        current_angle = starting + (i * angle_change)
         p = Point(initial_point.x + spacing, initial_point.y)
-        p.rotate_around(initial_point, initial_angle)
+        p.rotate_around(initial_point, current_angle)
 
-        la = Point(p.x, p.y - length)
-        lb = Point(p.x, p.y + length)
-        if reverse: la, lb = lb, la
+        la = Point(p.x, p.y - length / 2)
+        lb = Point(p.x, p.y + length / 2)
 
-        la.rotate_around(la, initial_angle)
-        lb.rotate_around(lb, initial_angle)
+        if reverse:
+            la, lb = lb, la
+
+        la.rotate_around(p, current_angle)
+        lb.rotate_around(p, current_angle)
 
         sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
-
-    else:
-        angle_change = angle_span / (line_count - 1)
-        starting = initial_angle - angle_span / 2
-        for i in range(line_count):
-            current_angle = starting + (i * angle_change)
-            p = Point(initial_point.x + spacing, initial_point.y)
-            p.rotate_around(initial_point, current_angle)
-
-            la = Point(p.x, p.y - length / 2)
-            lb = Point(p.x, p.y + length / 2)
-            if reverse: la, lb = lb, la
-
-            la.rotate_around(p, current_angle)
-            lb.rotate_around(p, current_angle)
-            sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
     return sub_lines
 
 
-# TODO MAKE SURE ALL PARAMETERS
-# TODO Full documentation
 def __get_most_perpendicular_line_to_boundary(
         lines: List[Tuple[Line, Line]],
         blue_boundary: List[Line],
@@ -241,6 +236,28 @@ def __get_most_perpendicular_line_to_boundary(
         bias_strength: float = 0.2,
         left_colour: int = BLUE_ON_LEFT
 ) -> Optional[Waypoint]:
+    """
+    This function will return a line from a list of line that is the most perpendicular to the boundary.
+    These lines are made up of sub-lines, which stem from the center of the line. Then we can then calculate where
+    the closest point of the sub-line[0] intersects with the left of hte track and where sub-line[1] intersects
+    with the right of the track. By doing this we can then see which line has the closest pair of intersections
+    and is therefore the most perpendicular to the track, making it a suitable waypoint.
+
+    Additionally we can bias these waypoints. A bias of 0 means tend straight, -1 == tend left and 1 == tend right.
+    We can also use the bias strength to determine how strongly to affect the biasing. This means in the event that
+    there is a choice in the track, then we can bias where the waypoints tend in order to choose that path. We can
+    alter and choose the shortest line like this: length = length * bias_value * bias_strength. Where the bias value
+    is the bias at that angle.
+
+    :param lines: The plausable waypoints to find the best waypoint from
+    :param blue_boundary: Blue boundary of the track
+    :param yellow_boundary: Yellow boundary of the track
+    :param orange_boundary: Orange boundary of the track
+    :param bias: Where the line should tend towards -> [-1: 1]
+    :param bias_strength: How strongly the bias affects the decision -> [0: 1]
+    :param left_colour: enum stating whether the blue or yellow is on the left of the track.
+    :return: The most suitable waypoint for the given parameters
+    """
     # store the two variables used to find the shortest line
     smallest_line: Optional[Waypoint] = None
     closest_distance: float = math.inf
@@ -302,7 +319,8 @@ def __get_most_perpendicular_line_to_boundary(
     return smallest_line
 
 
-# TODO DOUBLE CHECK THE ANGLES + PROPERGATE UPWARDS
+# TODO THIS function is comment is incorrect, this function is used to create lines around the first point
+# TODO PROPERGATE UPWARDS
 def __get_radar_lines_around_point(
         origin: Point,
         angle: float,
