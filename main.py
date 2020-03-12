@@ -1,3 +1,5 @@
+import random
+
 import cv2
 
 from fsai.objects.track import Track
@@ -6,7 +8,7 @@ from fsai.path_planning.waypoints import gen_local_waypoints, decimate_waypoints
 from fsai.visualisation.track_2d import draw_track
 
 
-track = Track("examples/data/tracks/brands_hatch.json")
+track = Track("examples/data/tracks/cadwell_park.json")
 blue_lines, yellow_lines, orange_lines = track.get_boundary()
 
 waypoints = gen_local_waypoints(
@@ -25,7 +27,7 @@ waypoints = decimate_waypoints(waypoints)
 
 scene = draw_track(
     track=track,
-    waypoints=[],
+    waypoints=waypoints,
     blue_lines=blue_lines,
     yellow_lines=yellow_lines,
     orange_lines=orange_lines,

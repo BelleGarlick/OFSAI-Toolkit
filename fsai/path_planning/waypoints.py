@@ -9,9 +9,7 @@ from fsai.objects.waypoint import Waypoint
 
 
 # Read me todo
-#  everything as normal with readme
-# add comments through out this
-# propergate all values upwards
+# everything as normal with readme
 # add custom readme to packages for mapping that explains htis in a lot of detail
 
 # Examples TODO
@@ -23,9 +21,10 @@ from fsai.objects.waypoint import Waypoint
 # generate evenly spaced
 # decimate
 # smooth lines out a lil to that they overlap less
+# local space
 
 # TODO
-# double check all examples are still correct and workas intended
+# double check all examples are still correct and work as intended
 
 BLUE_ON_LEFT = 0
 YELLOW_ON_LEFT = 1
@@ -42,24 +41,59 @@ def gen_local_waypoints(
         full_track: bool = False,
         spacing: float = 2,
         margin: float = 0,
+        radar_length: float = 20,
+        radar_count: int = 13,
+        radar_span: float = math.pi / 1.5,
         bias: float = 0,
         bias_strength=0.2,
         smooth=False
 ) -> List[Waypoint]:
+    """
+    This method is used to create waypoints around a vehicle or for a full track. First an initial set of radar lines
+    around the car position is made, then we search for the radar line which is hte best fit. Then we can create the
+    surrounding waypoints using the 'create_waypoint_lines' method.
 
+    :param car_pos: The initial point to generate the waypoints from
+    :param car_angle: Orientation of the car, this will help angle the waypoints initially
+    :param blue_boundary: Blue boundary of the track
+    :param yellow_boundary: Yellow boundary of the track
+    :param orange_boundary: Orange boundary of the track
+    :param foresight: How many waypoints in front of the car to generate
+    :param negative_foresight: How many waypoints behind the car to generate
+    :param full_track: Should the entire track be generated or a fixed amount of waypoints
+    :param spacing: How far apart should each waypoint be spaced
+    :param margin: Error margin to shorten the track by. This is applied to both ends of the waypoints.
+    :param radar_length: The maximum length a waypoint can be
+    :param radar_count: How many radar lines should be tested upon to find the true waypoint
+    :param radar_span: The total coverage the radar lines can exists between
+    :param bias: Bias hte track to head certain directions
+    :param bias_strength: How strongly to apply the bias
+    :param smooth: If true then the waypoints will be smoothed to create a smoothing angle between waypoints
+    :return: Return the list of generated waypoints
+    """
     # create initial way point surrounding the car
-    initial_waypoint = create_waypoint_at_pos(car_pos, car_angle, blue_boundary, yellow_boundary, orange_boundary)
+    initial_waypoint = create_waypoint_at_pos(
+        car_pos,
+        car_angle,
+        blue_boundary,
+        yellow_boundary,
+        orange_boundary,
+        left_boundary_colour=BLUE_ON_LEFT,
+        radar_line_count=radar_count,
+        radar_line_length=radar_length,
+        radar_span=radar_span
+    )
     initial_point = initial_waypoint.get_optimum_point()
 
     # if full track then set the foresight really high, and negative to 0
     # we can set the foresight really high because waypoints wont overlap
     # if the full track is active
     if full_track:
-        foresight = 100000
+        foresight = 10000
         negative_foresight = 0
 
     # generate waypoints in front of the origin
-    forward_lines = create_frontal_waypoints(
+    forward_lines = create_waypoint_lines(
         initial_point=initial_point,
         initial_angle=car_angle,
         count=foresight,
@@ -69,11 +103,14 @@ def gen_local_waypoints(
         yellow_boundary=yellow_boundary,
         orange_boundary=orange_boundary,
         bias=bias,
-        bias_strength=bias_strength
+        bias_strength=bias_strength,
+        max_radar_length=radar_length,
+        radar_count=radar_count,
+        radar_angle_span=radar_span
     )
 
     # generate waypoints behind the origin
-    reversed_lines = create_frontal_waypoints(
+    reversed_lines = create_waypoint_lines(
         initial_point=initial_point,
         initial_angle=car_angle + math.pi,
         count=negative_foresight,
@@ -84,7 +121,10 @@ def gen_local_waypoints(
         yellow_boundary=yellow_boundary,
         orange_boundary=orange_boundary,
         bias=bias,
-        bias_strength=bias_strength
+        bias_strength=bias_strength,
+        max_radar_length=radar_length,
+        radar_count=radar_count,
+        radar_angle_span=radar_span
     )
     # waypoints should be reverse as they are created from the origin going outwards,
     # but we want them in order directional order, so we reverse them here
@@ -100,56 +140,144 @@ def gen_local_waypoints(
     return smoothify(all_waypoints, full_track) if smooth else all_waypoints
 
 
-def create_waypoint_at_pos(point: Point, angle: float, blue_boundary, yellow_boundary, orange_boundary) -> Waypoint:
-    blue_lines = [line for line in blue_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
-    yellow_lines = [line for line in yellow_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
-    orange_lines = [line for line in orange_boundary if line.a.distance(point) < 10 or line.b.distance(point) < 10]
+def create_waypoint_at_pos(
+        point: Point,
+        angle: float,
+        blue_boundary: List[Line],
+        yellow_boundary: List[Line],
+        orange_boundary: List[Line],
+        left_boundary_colour: int = BLUE_ON_LEFT,
+        radar_line_count: int = 13,
+        radar_line_length: float = 20,
+        radar_span: float = math.pi/2
+) -> Waypoint:
+    """
+    This function will create the radar line around a given point. This is done by creating a list of waypoints
+    rotating around hte point given such that each line passes through the origin point. Then each line is compared
+    to find the best line for the track using the '__get_most_perpendicular_line_to_boundary' function. For more
+    details on how the lines are generated see '__get_radar_lines_around_point'.
 
-    # TODO PROPERGATE VALUES UPWATDS
+    :param point: Origin point to create points around
+    :param angle: Heading angle of the vehicle
+    :param blue_boundary: Blue track boundary
+    :param yellow_boundary: Yellow track boundary
+    :param orange_boundary: Orange track boundary
+    :param left_boundary_colour: Which lines are on the left, in order to orientate the boundary correctly
+    :param radar_line_count: How many lines arch about the point
+    :param radar_line_length: The distance of each line
+    :param radar_span: The total spread (either side of the direction the car faces) to create the lines around.
+    :return: The best fit waypoint at a given point
+    """
+    # threshold all lines we check by making sure they're close enough. This is to limit the search range and reduce
+    # computation time.
+    radar_line_radius = radar_line_length / 2
+    blue_lines = [line for line in blue_boundary
+                  if line.a.distance(point) < radar_line_radius or line.b.distance(point) < radar_line_radius]
+    yellow_lines = [line for line in yellow_boundary
+                    if line.a.distance(point) < radar_line_radius or line.b.distance(point) < radar_line_radius]
+    orange_lines = [line for line in orange_boundary
+                    if line.a.distance(point) < radar_line_radius or line.b.distance(point) < radar_line_radius]
+
+    # Create a list of radar lines that pass through the origin point
     lines: List[Tuple[Line, Line]] = __get_radar_lines_around_point(
-        point, angle, count=10, length=10, total_span=math.pi / 2
+        point,
+        angle,
+        count=radar_line_count,
+        length=radar_line_length,
+        total_span=radar_span
     )
-    # TODO propergate upwards
+
+    # find the best line out of the lines generated above
     smallest_line: Waypoint = __get_most_perpendicular_line_to_boundary(
         lines,
         blue_lines,
         yellow_lines,
         orange_lines,
-        bias=0,
-        bias_strength=0.2,
-        left_colour=BLUE_ON_LEFT
+        bias_strength=0,  # since we're creating the waypoints around a point we do not want any bias
+        left_colour=left_boundary_colour
     )
     return smallest_line
 
 
-def create_frontal_waypoints(initial_point: Point, initial_angle: float, count: int, spacing: float, blue_boundary: List[Line], yellow_boundary: List[Line], orange_boundary: List[Line], overlap=False, reverse=False, bias: float=0, bias_strength: float=0):
-    forward_lines = []
+def create_waypoint_lines(
+        initial_point: Point,
+        initial_angle: float,
+        count: int,
+        spacing: float,
+        blue_boundary: List[Line],
+        yellow_boundary: List[Line],
+        orange_boundary: List[Line],
+        overlap=False,
+        reverse=False,
+        bias: float = 0,
+        bias_strength: float = 0,
+        max_radar_length: float = 20,
+        radar_count: int = 13,
+        radar_angle_span: float = math.pi
+) -> List[Waypoint]:
+    """
+    This function is to be called to iteratively create new waypoints. This is done by calling the 'get_next_waypoint'
+    repetitively. This function will end ones the count function is met or the lap has overlapped itself (if the over-
+    lap parameter is set ot false).
+
+    :param initial_point: The initial point to generate the waypoints from
+    :param initial_angle: The angle the waypoints should head towards
+    :param count: The amount of waypoints to generate
+    :param spacing: How far each waypoint should be from the previous waypoint
+    :param blue_boundary: The blue boundary of the track
+    :param yellow_boundary: The yellow boundary of the track
+    :param orange_boundary: The orange boundary of the track
+    :param overlap: Are the waypoints allowed to overlap themselves.
+    :param reverse: Are the waypoints to be reversed. Not line reversing a list, but reversing line.a <-> line.b
+    :param bias: The bias of the track. See '__get_most_perpendicular_line_to_boundary'
+    :param bias_strength: The bias strength of the track. See '__get_most_perpendicular_line_to_boundary'
+    :param max_radar_length: Maximum length a waypoint line can be
+    :param radar_count: The amount of plausible radar lines to create in order to find the best radar line
+    :param radar_angle_span: Total radians that the stems line span from. See '__create_radar_lines'
+    :return: A list of waypoints in the direction, from the origin point provided
+    """
+    # store all the waypoints generated here
+    waypoint_lines: List[Waypoint] = []
+
+    # store a buffer of the current point and angle to generate the next waypoint for
     last_point: Point = initial_point
     last_angle: float = initial_angle
+
     for i in range(count):
-        next_waypoint = get_next_waypoint(
+        # calculate the next waypoint position given some parameters
+        next_waypoint: Waypoint = get_next_waypoint(
             starting_point=last_point,
             direction=last_angle,
             blue_boundary=blue_boundary,
             yellow_boundary=yellow_boundary,
             orange_boundary=orange_boundary,
             spacing=spacing,
-            max_length=20,
+            max_length=max_radar_length,
+            radar_count=radar_count,
+            radar_angle_span=radar_angle_span,
             reverse=reverse,
             bias=bias,
-            bias_strength=bias_strength
+            bias_strength=bias_strength,
+            left_boundary_colour=BLUE_ON_LEFT
         )
 
-        forward_lines.append(next_waypoint)
+        # if we have want no overlap then we will prevent it by checking if the first waypoint and the current
+        # waypoint get to close then we break the loop - this is only useful for calculating the full track
+        if not overlap and i > 3:
+            # see if the distances are close enough to close the track
+            waypoint_center: Point = next_waypoint.line.a + ((next_waypoint.line.b - next_waypoint.line.a) * 0.5)
+            if waypoint_center.distance(initial_point) < spacing:
+                break
 
+        # add the new waypoint to the waypoint lines
+        waypoint_lines.append(next_waypoint)
+
+        # calculate the next angle and origin point
         next_point = next_waypoint.get_optimum_point()
         last_angle = last_point.angle_to(next_point)
         last_point = next_point
 
-        if not overlap:
-            if next_point.distance(initial_point) < spacing * 1.5 and i > 3:
-                break
-    return forward_lines
+    return waypoint_lines
 
 
 def get_next_waypoint(
@@ -160,30 +288,71 @@ def get_next_waypoint(
     orange_boundary: List[Line],
     spacing: float = 3,
     max_length: float = 20,
-    reverse=False,
+    radar_count: int = 13,
+    radar_angle_span: float = math.pi,
     bias: float = 0,
-    bias_strength: float = 0.2
+    bias_strength: float = 0.2,
+    left_boundary_colour: int = BLUE_ON_LEFT,
+    reverse=False
 ) -> Waypoint:
-    distance = (spacing**2 + max_length**2) ** (1/2)
+    """
+    This function is used to get the next waypoint given an origin, distance and boundaries. This is done by creating
+    a set of radars lines (potential waypoints) using the '__create_radar_lines function', and then from this list
+    searching for the most suitable waypoint line using the function '__get_most_perpendicular_line_to_boundary'
+    which in turn returns the next waypoint.
+
+    :param starting_point: Current point of the car/waypoint in which we wish to stem the next waypoint from
+    :param direction: The current heading direction which us used to orientate the next waypoint
+    :param blue_boundary: Blue boundary lines
+    :param yellow_boundary: Yellow boundary lines
+    :param orange_boundary: Orange boundary lines
+    :param spacing: Spacing from the origin to the next waypoint
+    :param max_length: Maximum length a waypoint line can be
+    :param radar_count: The amount of plausible radar lines to create in order to find the best radar line
+    :param radar_angle_span: Total radians that the stems line span from. See '__create_radar_lines'
+    :param bias: The bias direction to head the waypoint. See '__get_most_perpendicular_line_to_boundary'
+    :param bias_strength: How strongly the bias affects the waypoint. See '__get_most_perpendicular_line_to_boundary'
+    :param left_boundary_colour: Which lines are on the left, in order to orientate the boundary correctly
+    :param reverse: Should the lines be reversed, used when creating negative waypoints to flip line.a <-> line.b
+    :return: The next waypoint given a set of parameters
+    """
+    # since we will be looking for the intersections with the boundaries, we will have to loop through each line in
+    # boundary. This is potentially a very slow and costly process. We can speed it up by removing lines that are
+    # unlikely to intercept the radar lines. We can do this by taking the distance of the origin to the end of each
+    # line to create a distance which is the max radius the lines can exists and then remove all lines that are
+    # too far from this distance, therefore only look for intersections with lines that could be within the
+    # correct range
+    # first calculate the potential distance which is the pythagoras of the spacing and the max-length/2. We divide
+    # the max length by two, since the spacing distance is from the origin to the center of the radar line
+    distance = (spacing**2 + (max_length / 2)**2) ** (1/2)
+
+    # loop through blue lines finding potential intersections
     plausible_blue_boundaries = [
         boundary_line for boundary_line in blue_boundary
         if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
+
+    # loop through yellow lines finding potential intersections
     plausible_yellow_boundaries = [
         boundary_line for boundary_line in yellow_boundary
         if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
+
+    # loop through orange lines finding potential intersections
     plausible_orange_boundaries = [
         boundary_line for boundary_line in orange_boundary
         if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
 
+    # create the radar lines, which are the plausible waypoint lines that the could be the ideal waypoint line
     radar_lines = __create_radar_lines(
         initial_point=starting_point,
         initial_angle=direction,
         spacing=spacing,
+        line_count=radar_count,
+        angle_span=radar_angle_span,
         length=max_length,
         reverse=reverse
     )
 
-    # TODO propergate upwards
+    # find the smalled line from the list of generated waypoints in radar_lines
     smallest_line: Optional[Waypoint] = __get_most_perpendicular_line_to_boundary(
         radar_lines,
         plausible_blue_boundaries,
@@ -191,8 +360,9 @@ def get_next_waypoint(
         plausible_orange_boundaries,
         bias=bias,
         bias_strength=bias_strength,
-        left_colour=BLUE_ON_LEFT
+        left_colour=left_boundary_colour
     )
+
     return smallest_line
 
 
@@ -204,25 +374,69 @@ def __create_radar_lines(
         angle_span: float = math.pi,
         length: float = 10,
         reverse=False
-):
+) -> List[Tuple[Line, Line]]:
+    """
+    This function is the building blocks of the waypoint algorithm. Given a point and a heading direction, we wish to
+    find the next waypoint. This is done by creating 'stem' lines, which span outwards from the initial point in the
+    direction of the initial angle. These lines span over some radius, so we have a range of span lines ahead of the
+    vehicle. Then we can create potential radar lines for each stem line. Each radar is connected to the respective
+    stem line perpendicular to one another where the stem line connects to the center of the newly created radar line.
+    These radar lines are the potential waypoints, aptly named radar because they're using to detect intersections with
+    the boundaries.
+
+    By creating these radar lines we can see the plausible places where the next waypoint should exists, and therefore
+    work out which of these lines is the next waypoints ('__get_most_perpendicular_line_to_boundary' is used for this).
+    There are a few parameters which govern how algorithm works. The spacing governs the length of the stem line, and
+    therefore how far from the origin the radar line should spawn. Line count is how many radar lines are created
+    doing this. More radar lines means more accurate waypoints, however it also means more calculation -> more lag.
+    Angle span is the total angle you wish the stem lines to span across. Length is how long the radar lines should be.
+    These radar lines are bounded between points based up on this length. If the lines are too long then we'll so
+    lots of potential matches which means more calculation, but if it's too short then we may miss genuine matches.
+    Reverse will flip the orientation of the line. We always want line.a to be on the left of the car. When the negative
+    waypoints are being calculated then it is important to flip line or the left of the line or else line.a will be on
+    the right of the car.
+
+    :param initial_point: Initial point to stem from.
+    :param initial_angle: angle of the car, heading direction of the waypoints
+    :param spacing: How far should the radar lines be from the origin
+    :param line_count: How many radar lines should be created
+    :param angle_span: Total radians that the stem lines span across
+    :param length: Length of each radar line
+    :param reverse: Are the waypoints being generated behind the car, if so flip line.a:line.b
+    :return: List of radar lines (potential waypoints)
+    """
+    # store the list of tuples of sub-lines
     sub_lines: List[Tuple[Line, Line]] = []
 
+    # since the stem lines span over some angle, we calculate a starting angle and delta angle
     angle_change = angle_span / (line_count - 1)
     starting = initial_angle - angle_span / 2
+
+    # iterate x time for each line in the line count ot create
     for i in range(line_count):
+        # first calculate which angle the line will stem from
         current_angle = starting + (i * angle_change)
+
+        # then create a point which to create the radar lines from and rotate it around the initial point
+        # this create the stem line, which the radar line can be drawn from
         p = Point(initial_point.x + spacing, initial_point.y)
         p.rotate_around(initial_point, current_angle)
 
+        # create left point and right point of the line respectively
         la = Point(p.x, p.y - length / 2)
         lb = Point(p.x, p.y + length / 2)
 
+        # in the event the track is going backwards for the negative
+        # waypoints, then we need to flip either end of the line
         if reverse:
             la, lb = lb, la
 
+        # around the current point, in order to create the arching line which is
+        # perpendicular line to the  outwards line
         la.rotate_around(p, current_angle)
         lb.rotate_around(p, current_angle)
 
+        # create a line which is the collection of sub-lines
         sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
     return sub_lines
 
@@ -249,7 +463,7 @@ def __get_most_perpendicular_line_to_boundary(
     alter and choose the shortest line like this: length = length * bias_value * bias_strength. Where the bias value
     is the bias at that angle.
 
-    :param lines: The plausable waypoints to find the best waypoint from
+    :param lines: The plausible waypoints to find the best waypoint from
     :param blue_boundary: Blue boundary of the track
     :param yellow_boundary: Yellow boundary of the track
     :param orange_boundary: Orange boundary of the track
@@ -319,8 +533,6 @@ def __get_most_perpendicular_line_to_boundary(
     return smallest_line
 
 
-# TODO THIS function is comment is incorrect, this function is used to create lines around the first point
-# TODO PROPERGATE UPWARDS
 def __get_radar_lines_around_point(
         origin: Point,
         angle: float,
@@ -329,33 +541,44 @@ def __get_radar_lines_around_point(
         total_span: float = math.pi / 2
 ) -> List[Tuple[Line, Line]]:
     """
-    This function will create a list of lines arching in-front of the vehicle. For example if you were 0,0 you might
-    have 3 lines [(-2, 0), (0, 2)],  [(-1, 1), (1, 1)],  [(2, 0), (0, 2)]. These lines are made up of sub-lines,
-    which stem from the center of the line. The reason this is done is that we can then calculate where the closest
-    point of the sub-line[0] intersects with the left of hte track and where sub-line[1] intersects with the right of
-    the track. By doing this we can then see which line has the closest pair of intersections and is therefore the
-    most perpendicular to the track, making it a suitable waypoint.
+    This function will create a list of lines that rotate around an origin point (where each line passes through the
+    origin). The lines produce potential waypoints around a point which we can selected as a waypoint for a particular
+    point. These lines are made up of sub-lines, which stem from the center of the line. The reason this is done is
+    that we can then calculate where the closest point of the sub-line[0] intersects with the left of hte track and
+    where sub-line[1] intersects with the right of the track. By doing this we can then see which line has the closest
+    pair of intersections and is therefore the most perpendicular to the track, making it a suitable waypoint.
+
+    These line are created similar to butterfly wings such that the lines are generated in an area (total_span) in
+    radians. This allows the waypoints to only spawn through the side of the vehicle rather than infront/behind.
 
     :param origin: The point at which the radar lines should arch around
     :param angle: The that the arching lines should be facing
     :param count: How many lines arch about the point
     :param length: The distance of the line from the origin
-    :param total_span: The total spread of the lines created.
-    :return: The arching lines ahead of the vehicle
+    :param total_span: The total spread (either side of the direction the car faces) to create the lines around.
+    :return: The lines around a particular point
     """
     # Store the list to test
     lines = []
 
+    # if only one line is to be generated that it must span 0 radians
+    if count <= 1:
+        count = 1  # make sure the min value is one, in the event it is given 0
+        total_span = 0
+
     # calculate the change in angle from each line to the next
     angle_change = total_span / count
-    # TODO Double check this is right, subtracting half pi seems bizzare - need an explenation in the commentts
-    # Calculate the initial angle which is the left most starting point
+
+    # Calculate the initial angle which is the left most starting point. We rotate it -pi/2 such that the angle
+    # starts rotated to the left of the vehicle (where blue lines are), then we subtract half the span, since we
+    # wish to allow the lines to spawn in an area from [-span/2 -> span/2], hence why we take the current angle
+    # then subtract half pi, then half the total span
     initial_angle = (angle - math.pi / 2) - (total_span / 2)
 
     # create a line infront of the car X (count) times.
     for i in range(count):
         # create and rotate the point the correct amount
-        p = Point(x=origin.x + length, y=origin.y)
+        p = Point(x=origin.x + length / 2, y=origin.y)
         p.rotate_around(position=origin, angle=initial_angle + angle_change * i)
 
         # create the line form the origin to this newly rotated point
