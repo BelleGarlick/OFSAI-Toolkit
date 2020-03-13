@@ -96,7 +96,8 @@ def draw_track(
     if target_line is None: target_line = []
 
     if cars is None: cars = []
-    cars = cars + track.cars
+    if track is not None:
+        cars = cars + track.cars
 
     # Work out bounds based upon all objects in scene
     min_x, min_y, max_x, max_y = __get_image_bounds(cones, blue_lines + yellow_lines + orange_lines, waypoints=waypoints)

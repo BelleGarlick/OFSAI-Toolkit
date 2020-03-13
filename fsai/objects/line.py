@@ -12,6 +12,8 @@ class Line:
     def normalise(self) -> Point:
         normalisation = self.b - self.a
         length = normalisation.distance(Point(0, 0))
+        if length == 0:
+            return
         normalisation.x /= length
         normalisation.y /= length
         return normalisation
@@ -34,10 +36,10 @@ class Line:
         y = (a1 * c2 - a2 * c1) / delta
 
         # check the point exists within the
-        min_x = max(min(line.a.x, line.b.x), min(self.a.x, self.b.x))
-        min_y = max(min(line.a.y, line.b.y), min(self.a.y, self.b.y))
-        max_x = min(max(line.a.x, line.b.x), max(self.a.x, self.b.x))
-        max_y = min(max(line.a.y, line.b.y), max(self.a.y, self.b.y))
+        min_x = round(1000 * max(min(line.a.x, line.b.x), min(self.a.x, self.b.x))) / 1000
+        min_y = round(1000 * max(min(line.a.y, line.b.y), min(self.a.y, self.b.y))) / 1000
+        max_x = round(1000 * min(max(line.a.x, line.b.x), max(self.a.x, self.b.x))) / 1000
+        max_y = round(1000 * min(max(line.a.y, line.b.y), max(self.a.y, self.b.y))) / 1000
 
         if min_x <= round(1000 * x)/1000 <= max_x and min_y <= round(1000 * y)/1000 <= max_y:
             return Point(x=x, y=y)

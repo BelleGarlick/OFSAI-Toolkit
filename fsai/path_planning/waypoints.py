@@ -7,25 +7,6 @@ from fsai.objects.line import Line
 from fsai.objects.point import Point
 from fsai.objects.waypoint import Waypoint
 
-
-# Read me todo
-# everything as normal with readme
-# add custom readme to packages for mapping that explains htis in a lot of detail
-
-# Examples TODO
-# Show basic, 10 font 5 back with custom spacing
-# show margin
-# show full track (/w & !/w overlap)
-# missing boundary modes
-# biasing effects
-# generate evenly spaced
-# decimate
-# smooth lines out a lil to that they overlap less
-# local space
-
-# TODO
-# double check all examples are still correct and work as intended
-
 BLUE_ON_LEFT = 0
 YELLOW_ON_LEFT = 1
 
@@ -43,9 +24,10 @@ def gen_local_waypoints(
         margin: float = 0,
         radar_length: float = 20,
         radar_count: int = 13,
-        radar_span: float = math.pi / 1.5,
+        radar_span: float = math.pi / 1.1,
         bias: float = 0,
         bias_strength=0.2,
+        left_boundary_colour: int = BLUE_ON_LEFT,
         smooth=False
 ) -> List[Waypoint]:
     """
@@ -68,6 +50,7 @@ def gen_local_waypoints(
     :param radar_span: The total coverage the radar lines can exists between
     :param bias: Bias hte track to head certain directions
     :param bias_strength: How strongly to apply the bias
+    :param left_boundary_colour: Which colour boundary is on the left [BLUE_ON_LEFT, YELLOW_ON_LEFT]
     :param smooth: If true then the waypoints will be smoothed to create a smoothing angle between waypoints
     :return: Return the list of generated waypoints
     """
@@ -78,7 +61,7 @@ def gen_local_waypoints(
         blue_boundary,
         yellow_boundary,
         orange_boundary,
-        left_boundary_colour=BLUE_ON_LEFT,
+        left_boundary_colour=left_boundary_colour,
         radar_line_count=radar_count,
         radar_line_length=radar_length,
         radar_span=radar_span
@@ -106,7 +89,8 @@ def gen_local_waypoints(
         bias_strength=bias_strength,
         max_radar_length=radar_length,
         radar_count=radar_count,
-        radar_angle_span=radar_span
+        radar_angle_span=radar_span,
+        left_boundary_colour=left_boundary_colour
     )
 
     # generate waypoints behind the origin
@@ -124,7 +108,8 @@ def gen_local_waypoints(
         bias_strength=bias_strength,
         max_radar_length=radar_length,
         radar_count=radar_count,
-        radar_angle_span=radar_span
+        radar_angle_span=radar_span,
+        left_boundary_colour=left_boundary_colour
     )
     # waypoints should be reverse as they are created from the origin going outwards,
     # but we want them in order directional order, so we reverse them here
@@ -213,7 +198,8 @@ def create_waypoint_lines(
         bias_strength: float = 0,
         max_radar_length: float = 20,
         radar_count: int = 13,
-        radar_angle_span: float = math.pi
+        radar_angle_span: float = math.pi,
+        left_boundary_colour: int = BLUE_ON_LEFT
 ) -> List[Waypoint]:
     """
     This function is to be called to iteratively create new waypoints. This is done by calling the 'get_next_waypoint'
@@ -234,6 +220,7 @@ def create_waypoint_lines(
     :param max_radar_length: Maximum length a waypoint line can be
     :param radar_count: The amount of plausible radar lines to create in order to find the best radar line
     :param radar_angle_span: Total radians that the stems line span from. See '__create_radar_lines'
+    :param left_boundary_colour: Which colour boundary is on the left [BLUE_ON_LEFT, YELLOW_ON_LEFT]
     :return: A list of waypoints in the direction, from the origin point provided
     """
     # store all the waypoints generated here
@@ -258,16 +245,8 @@ def create_waypoint_lines(
             reverse=reverse,
             bias=bias,
             bias_strength=bias_strength,
-            left_boundary_colour=BLUE_ON_LEFT
+            left_boundary_colour=left_boundary_colour
         )
-
-        # if we have want no overlap then we will prevent it by checking if the first waypoint and the current
-        # waypoint get to close then we break the loop - this is only useful for calculating the full track
-        if not overlap and i > 3:
-            # see if the distances are close enough to close the track
-            waypoint_center: Point = next_waypoint.line.a + ((next_waypoint.line.b - next_waypoint.line.a) * 0.5)
-            if waypoint_center.distance(initial_point) < spacing:
-                break
 
         # add the new waypoint to the waypoint lines
         waypoint_lines.append(next_waypoint)
@@ -276,6 +255,14 @@ def create_waypoint_lines(
         next_point = next_waypoint.get_optimum_point()
         last_angle = last_point.angle_to(next_point)
         last_point = next_point
+
+        # if we have want no overlap then we will prevent it by checking if the first waypoint and the current
+        # waypoint get to close then we break the loop - this is only useful for calculating the full track
+        if not overlap and i > 3:
+            # see if the distances are close enough to close the track
+            waypoint_center: Point = next_waypoint.line.a + ((next_waypoint.line.b - next_waypoint.line.a) * 0.5)
+            if waypoint_center.distance(initial_point) < spacing * 1.4:
+                break
 
     return waypoint_lines
 
@@ -524,6 +511,7 @@ def __get_most_perpendicular_line_to_boundary(
         bias_value = max(.0, 1 - abs(bias_angle - bias))
         # we can then create a new heuristic distance which is the current distance affected by the bias
         distance -= distance * bias_value * bias_strength
+
         # then we can compare hte smallest line with the heuristic
         if smallest_line is None or distance < closest_distance:
             # bae is schmol line so we update the smallest known line
