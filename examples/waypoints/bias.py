@@ -27,10 +27,12 @@ orange_lines = [
 # bundle the rendering in to one def
 def show_waypoints(way_points):
     image = draw_track(
-        blue_lines=blue_lines,
-        yellow_lines=yellow_lines,
-        orange_lines=orange_lines,
-        waypoints=way_points
+        lines=[
+            (150, 150, 150), 2, [waypoint.line for waypoint in waypoints],
+            ((255, 0, 0), 2, blue_lines),
+            ((0, 255, 255), 2, yellow_lines),
+            ((0, 100, 255), 2, orange_lines),
+        ],
     )
     cv2.imshow("", image)
     cv2.waitKey(0)

@@ -5,7 +5,7 @@ import numpy as np
 
 from fsai.objects.line import Line
 from fsai.objects.point import Point
-from fsai.objects.waypoint import Waypoint
+from fsai.path_planning.waypoint import Waypoint
 
 BLUE_ON_LEFT = 0
 YELLOW_ON_LEFT = 1

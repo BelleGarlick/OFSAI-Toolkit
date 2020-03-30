@@ -31,10 +31,15 @@ blue_lines, yellow_lines, orange_lines = create_boundary(
 
 # draw and show the track
 cv2.imshow("Track Boundary Example", draw_track(
-    cones=blue_cones+yellow_cones,
-    blue_lines=blue_lines,
-    yellow_lines=yellow_lines,
-    orange_lines=orange_lines
+    cones=[
+        ((255, 0, 0), 5, blue_cones),
+        ((0, 255, 255), 5, yellow_cones)
+    ],
+    lines=[
+        ((255, 0, 0), 2, blue_lines),
+        ((0, 255, 255), 2, yellow_lines),
+        ((0, 100, 255), 2, orange_lines),
+    ],
 ))
 cv2.waitKey(0)
 cv2.destroyAllWindows()

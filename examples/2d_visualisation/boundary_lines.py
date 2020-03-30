@@ -8,9 +8,11 @@ blue_lines, yellow_lines, orange_lines = track.get_boundary()
 
 image = draw_track(
     track=track,
-    blue_lines=blue_lines,
-    yellow_lines=yellow_lines,
-    orange_lines=orange_lines,
+    lines=[
+        ((255, 0, 0), 2, blue_lines),
+        ((0, 255, 255), 2, yellow_lines),
+        ((0, 100, 255), 2, orange_lines),
+    ],
     background=100,
     scale=20,
     padding=50

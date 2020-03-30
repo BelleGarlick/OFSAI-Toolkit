@@ -1,8 +1,8 @@
 import json
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from fsai.mapping.boundary_estimation import create_boundary
-from fsai.objects.car import Car
+from fsai.car.car import Car
 from fsai.objects.cone import Cone, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE, CONE_COLOR_BIG_ORANGE
 from fsai.objects.line import Line
 from fsai.objects.point import Point
@@ -55,7 +55,7 @@ class Track:
 
     def to_json(self):
         """
-        Convert object into the json/dict outlined in the readme.md.
+        Convert object into the json/dict outlined in the README.md.
         :return: Json/dict representing this object.
         """
         return {
@@ -64,7 +64,7 @@ class Track:
             "orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.orange_cones],
             "big_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.big_cones],
             "cars": [
-                {"pos": {"x": car.pos.x, "y": car.pos.y}, "orientation": car.orientation} for car in self.cars
+                {"pos": {"x": car.pos.x, "y": car.pos.y}, "orientation": car.heading} for car in self.cars
             ]
         }
 

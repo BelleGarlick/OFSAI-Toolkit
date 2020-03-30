@@ -86,7 +86,6 @@ class YOLO:
         max_size = max(image.shape)
         image = letterbox_image(image, self.size) / 255
         image = tf.expand_dims(image, 0)
-
         boxes, scores, classes, nums = self.model(image)
         results = []
         for i in range(nums[0]):
@@ -129,13 +128,13 @@ class YOLO:
         train_dataset, val_dataset = dataset.load_dataset(
             annotations_path,
             images_path,
+            classes=self.classes,
             anchors=self.anchors,
             anchor_masks=self.anchor_masks,
             input_size=self.size,
             batch_size=batch_size,
             max_predictions=self.max_predictions,
-            val_split=validation_split,
-            flip_dataset=flip_dataset
+            val_split=validation_split
         )
         print("Dataset loaded....")
 

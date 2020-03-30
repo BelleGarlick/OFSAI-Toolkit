@@ -19,6 +19,15 @@ class Point:
     def __mul__(self, scalar):
         return Point(self.x * scalar, self.y * scalar)
 
+    def __truediv__(self, scalar):
+        return Point(self.x / scalar, self.y / scalar)
+
+    def __abs__(self):
+        return Point(abs(self.x), abs(self.y))
+
+    def __len__(self):
+        return math.hypot(self.x, self.y)
+
     def copy(self):
         return Point(self.x, self.y)
 
@@ -36,6 +45,13 @@ class Point:
     def sub(self, point):
         self.x -= point.x
         self.y -= point.y
+
+    def normalize(self):
+        length = len(self)
+        return Point(
+            self.x / length,
+            self.y / length
+        )
 
     def distance(self, point):
         """

@@ -1,9 +1,12 @@
 import os
 import random
+from typing import List
 
 import cv2
 import numpy as np
 import tensorflow as tf
+
+from fsai.utils.annotations import auto_detect_annotation_loader
 
 
 @tf.function
@@ -74,6 +77,7 @@ def transform_targets(y_train, anchors, anchor_masks, size):
 def load_dataset(
         annotations_path: str,
         images_path: str,
+        classes: List[str],
         anchors,
         anchor_masks,
         input_size: int = 416,
@@ -83,33 +87,59 @@ def load_dataset(
 ):
     x = []
     y = []
-    # TODO Data generator
+
     if os.path.exists(annotations_path):
-        with open(annotations_path, "r") as annotations:
-            for line in annotations.readlines():
-                line_tokens = line.split()
-                if len(line_tokens) >= 2:
-                    image_path = line_tokens[0]
+        for annotation_file in os.listdir(annotations_path):
+            if annotation_file[0] == ".": continue
+            try:
+                annotation_path = os.path.join(annotations_path, annotation_file)
 
-                    image = cv2.imread(images_path + image_path)   # load and normalise
-                    max_size = max(image.shape)
+                image_path = ".".join(annotation_file.split(".")[:-1]) + ".jpg"
 
-                    letter_boxed_image = letterbox_image(image, input_size)
-                    x.append(letter_boxed_image / 255)  # add normalised image
-                    oh, ow, depth = image.shape
+                image = cv2.imread(os.path.join(images_path, image_path))   # load and normalise
+                max_size = max(image.shape)
 
-                    boxes = [data.split(",") for data in line_tokens[1:]]
-                    label = []
-                    for box in boxes:
-                        x1, y1, x2, y2, class_num = [float(b) for b in box]
-                        x1 = (x1 + ((max_size-ow)/2)) / max_size
-                        y1 = (y1 + ((max_size-oh)/2)) / max_size
-                        x2 = (x2 + ((max_size-ow)/2)) / max_size
-                        y2 = (y2 + ((max_size-oh)/2)) / max_size
-                        label.append([x1, y1, x2, y2, class_num])
-                    for i in range(max_predictions - len(label)):
-                        label.append([0, 0, 0, 0, 0])
-                    y.append(label[:max_predictions])
+                letter_boxed_image = letterbox_image(image, input_size)
+                x.append(letter_boxed_image / 255)  # add normalised image
+                oh, ow, depth = image.shape
+
+                boxes = auto_detect_annotation_loader(annotation_path, classes)
+                label = []
+
+                for box in boxes:
+                    class_num, cx, cy, w, h = [float(b) for b in box]
+                    x1 = (cx - w/2) * ow
+                    x2 = (cx + w/2) * ow
+                    y1 = (cy - h/2) * oh
+                    y2 = (cy + h/2) * oh
+                    x1 = (x1 + ((max_size-ow)/2)) / max_size
+                    y1 = (y1 + ((max_size-oh)/2)) / max_size
+                    x2 = (x2 + ((max_size-ow)/2)) / max_size
+                    y2 = (y2 + ((max_size-oh)/2)) / max_size
+                    label.append([x1, y1, x2, y2, class_num])
+
+                for i in range(max_predictions - len(label)):
+                    label.append([0, 0, 0, 0, 0])
+
+                y.append(label[:max_predictions])
+            except Exception as e:
+                print("Error loading annotation: {} - skipping to next annotation.".format(annotation_file))
+                print(e)
+
+            # with open(annotations_path, "r") as annotations:
+            #     for line in annotations.readlines():
+            #         line_tokens = line.split()
+            #         if len(line_tokens) >= 2:
+            #             image_path = line_tokens[0]
+            #
+            #             image = cv2.imread(images_path + image_path)   # load and normalise
+            #             max_size = max(image.shape)
+            #
+            #             letter_boxed_image = letterbox_image(image, input_size)
+            #             x.append(letter_boxed_image / 255)  # add normalised image
+            #             oh, ow, depth = image.shape
+            #
+            #             boxes = [data.split(",") for data in line_tokens[1:]]
     else:
         print("Annotations path not found")
 
@@ -120,8 +150,10 @@ def load_dataset(
 
     # split data set
     val_split = int(val_split * len(x))
-    x = np.asarray(x)
-    y = np.asarray(y)
+    x = np.asarray(x, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float32)
+    print(x.shape)
+    print(y.shape)
     val_x, train_x = x[:val_split], x[val_split:]
     val_y, train_y = y[:val_split], y[val_split:]
 

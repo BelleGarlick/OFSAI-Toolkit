@@ -12,9 +12,11 @@ blue_lines, yellow_lines, orange_lines = track.get_boundary()
 
 # draw and show the track
 cv2.imshow("Track Boundary Example", draw_track(
-    blue_lines=blue_lines,
-    yellow_lines=yellow_lines,
-    orange_lines=orange_lines
+    lines=[
+        ((255, 0, 0), 2, blue_lines),
+        ((0, 255, 255), 2, yellow_lines),
+        ((0, 100, 255), 2, orange_lines),
+    ],
 ))
 cv2.waitKey(0)
 cv2.destroyAllWindows()

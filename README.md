@@ -7,11 +7,12 @@ Features:
  - Cone detection 
  - Cone Mapping
  - Track Boundary Estimation
+ - Waypoint Generation
+ - [Online Image Annotator (with Active Learning)](/fsai/tools/README.md)
  
 TODO:
- - Midline calculation
  - Racing line calculation
- - On-the-line image annotator (with active learning)
+ - Car Physics
  - On-the-line custom track maker
  - Yolo Trains Via Data generator where each imagine is loaded differently with random alterations
  - Visualise 3D track
@@ -135,7 +136,7 @@ Annotates a given image with given annotations, returning an openCV formatted im
  ```python
 from fsai.visualisation.image_annotations import annotate
 
-image = annotate(label_path="labels/0.txt", image_path="images/0.jpg", colors=[(255, 0, 0), (0, 255, 0)], line_width=10)
+image = annotate(labels_path="labels/0.txt", image_path="images/0.jpg", colors=[(255, 0, 0), (0, 255, 0)], line_width=10)
 cv2.imshow("Cones", image)
 cv2.waitKey(0)
 ```

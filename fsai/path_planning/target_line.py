@@ -1,7 +1,7 @@
 from typing import List
 
 from fsai.objects.point import Point
-from fsai.objects.waypoint import Waypoint
+from fsai.path_planning.waypoint import Waypoint
 
 
 def get_points_from_waypoints(waypoints: List[Waypoint]):
