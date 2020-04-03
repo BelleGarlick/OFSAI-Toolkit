@@ -105,4 +105,58 @@ This function allows you to render your scene as in a pygame screen.
 `padding` - How much padding (pixels) to surround the image with (for aesthetic reasons).  
 
 #### Usage:  
+Using pygame as a rendering system allows us to view simulations. In this example usage we can use a joystick to control the vehicle.
+```python
+import time
+import pygame as pygame
+from fsai.objects.track import Track
+from fsai.visualisation.draw_pygame import render
 
+# Set up pygame and a pygame controller
+pygame.init()
+screen_size = [1000, 800]
+screen = pygame.display.set_mode(screen_size)
+joystick = None
+if pygame.joystick.get_count() > 0:
+    joystick = pygame.joystick.Joystick(0)
+    joystick.init()
+
+# Load track and boundary
+track = Track("examples/data/tracks/azure_circuit.json")
+blue_lines, yellow_lines, orange_lines = track.get_boundary()
+
+running = True
+last_update = time.time()
+while running:
+    now = time.time()
+    dt = now - last_update
+
+    # Set car driving based upon the joystick inputs
+    if joystick is not None:
+        track.cars[0].throttle = max(0, -joystick.get_axis(2))
+        track.cars[0].steer = joystick.get_axis(0)
+        track.cars[0].brake = max(0, joystick.get_axis(2))
+        
+    # update the physics
+    track.cars[0].physics.update(dt)
+
+    # draw and show the track
+    render(
+        screen,
+        screen_size,
+        cones=[
+            ((255, 255, 0), 5, track.yellow_cones),
+            ((0, 0, 255), 5, track.blue_cones)
+        ],
+        lines=[
+            ((0, 0, 255), 2, blue_lines),
+            ((255, 255, 0), 2, yellow_lines),
+            ((255, 100, 0), 2, orange_lines)
+        ],
+        cars=track.cars
+    )
+
+    pygame.display.flip()
+    last_update = now
+pygame.quit()
+```
