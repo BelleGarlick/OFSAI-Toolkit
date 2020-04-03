@@ -5,7 +5,7 @@ import cv2
 from fsai.objects.line import Line
 from fsai.objects.point import Point
 from fsai.path_planning.waypoints import gen_local_waypoints
-from fsai.visualisation.track_2d import draw_track
+from fsai.visualisation.draw_opencv import draw_track
 
 # custom split in the track
 blue_lines = [

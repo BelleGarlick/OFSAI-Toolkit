@@ -2,7 +2,7 @@ import cv2
 
 from fsai.objects.track import Track
 from fsai.path_planning.waypoints import gen_local_waypoints, decimate_waypoints
-from fsai.visualisation.track_2d import draw_track
+from fsai.visualisation.draw_opencv import render
 
 
 # Load track and boundary
@@ -32,7 +32,7 @@ waypoints = decimate_waypoints(
 )
 
 # render the track
-scene = draw_track(
+scene = render(
     track=track,
     lines=[
         (150, 150, 150), 2, [waypoint.line for waypoint in waypoints],

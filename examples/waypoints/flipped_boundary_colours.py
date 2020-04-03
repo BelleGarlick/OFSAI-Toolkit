@@ -4,7 +4,7 @@ import cv2
 
 from fsai.objects.track import Track
 from fsai.path_planning.waypoints import gen_local_waypoints, YELLOW_ON_LEFT
-from fsai.visualisation.track_2d import draw_track
+from fsai.visualisation.draw_opencv import draw_track
 
 
 # Load track and boundary

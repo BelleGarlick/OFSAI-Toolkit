@@ -2,7 +2,7 @@ import cv2
 
 from fsai.mapping.boundary_estimation import create_boundary
 from fsai.objects.cone import CONE_COLOR_YELLOW, Cone, CONE_COLOR_BLUE
-from fsai.visualisation.track_2d import draw_track
+from fsai.visualisation.draw_opencv import render
 
 
 blue_cones = [
@@ -30,7 +30,7 @@ blue_lines, yellow_lines, orange_lines = create_boundary(
 )
 
 # draw and show the track
-cv2.imshow("Track Boundary Example", draw_track(
+cv2.imshow("Track Boundary Example", render(
     cones=[
         ((255, 0, 0), 5, blue_cones),
         ((0, 255, 255), 5, yellow_cones)

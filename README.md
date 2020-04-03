@@ -2,13 +2,15 @@
 An easy-to-use, open-source toolkit for self driving racing car development. Please try and improve on the tools offered and contribute to help everyone. 
 
 Features:
- - Visualise image annotations
- - Visualise 2D track
  - Cone detection 
  - Cone Mapping
  - Track Boundary Estimation
  - Waypoint Generation
- - [Online Image Annotator (with Active Learning)](/fsai/tools/README.md)
+ * [Online Image Annotator (with Active Learning)](/fsai/tools/README.md)
+ * [Visualisations](/fsai/visualisation/README.md)  
+   * [Annotation Renderer](/fsai/visualisation/README.md)  
+   * [2D Track Visualiser (OpenCV)](/fsai/visualisation/README.md)  
+   * [2D Track Visualiser (PyGame)](/fsai/visualisation/README.md)  
  
 TODO:
  - Racing line calculation
@@ -186,14 +188,14 @@ you liking by altering the method parameters.
 #### Example Usages:
  ```python
 from fsai.objects.track import Track
-from fsai.visualisation.track_2d import draw_track
+from fsai.visualisation.draw_opencv import draw_track
 
 track = Track("examples/data/tracks/laguna_seca.json")
 image = draw_track(track=track)
 ```
 ```python
 from fsai.objects.track import Track
-from fsai.visualisation.track_2d import draw_track
+from fsai.visualisation.draw_opencv import draw_track
 
 track = Track("examples/data/tracks/imola.json")
 blue_lines, yellow_lines, orange_lines = track.get_boundary()
