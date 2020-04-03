@@ -7,3 +7,4 @@
 *.png
 *checkpoints*
 data/*
+*.idea*
