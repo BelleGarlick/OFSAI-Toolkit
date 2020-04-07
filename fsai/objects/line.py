@@ -46,10 +46,13 @@ class Line:
         return None
 
     def angle(self):
-        return math.atan2(self.a.x - self.b.x, self.a.y - self.b.y)
+        return math.atan2(self.b.y - self.a.y, self.b.x - self.a.x)
 
     def copy(self):
         return Line(a=self.a.copy(), b=self.b.copy())
 
     def length(self):
         return math.hypot(self.a.x - self.b.x, self.a.y - self.b.y)
+
+    def center(self):
+        return self.a + ((self.b - self.a) * 0.5)

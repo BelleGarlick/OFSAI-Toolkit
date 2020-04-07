@@ -68,7 +68,7 @@ def render(
     return image
 
 
-def render_car(image, car, scale, x_offset, y_offset):
+def render_car(image, car: Car, scale, x_offset, y_offset):
     body_points = [
         Point(car.pos.x + car.cg_to_front, car.pos.y - car.width / 2),
         Point(car.pos.x + car.cg_to_front, car.pos.y + car.width/2),

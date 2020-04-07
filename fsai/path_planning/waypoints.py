@@ -22,7 +22,7 @@ def gen_local_waypoints(
         full_track: bool = False,
         spacing: float = 2,
         margin: float = 0,
-        radar_length: float = 20,
+        radar_length: float = 25,
         radar_count: int = 13,
         radar_span: float = math.pi / 1.1,
         bias: float = 0,
@@ -114,7 +114,6 @@ def gen_local_waypoints(
     # waypoints should be reverse as they are created from the origin going outwards,
     # but we want them in order directional order, so we reverse them here
     reversed_lines.reverse()
-
     # merge all waypoints in order of negative foresight -> central waypoints -> forward waypoints
     all_waypoints = reversed_lines + [initial_waypoint] + forward_lines
 
@@ -132,7 +131,7 @@ def create_waypoint_at_pos(
         yellow_boundary: List[Line],
         orange_boundary: List[Line],
         left_boundary_colour: int = BLUE_ON_LEFT,
-        radar_line_count: int = 13,
+        radar_line_count: int = 15,
         radar_line_length: float = 20,
         radar_span: float = math.pi/2
 ) -> Waypoint:
@@ -667,7 +666,7 @@ def smoothify(current_lines: List[Waypoint], full_track: bool):
         average_angle = math.atan2(y, x)
 
         # calculate the difference between the average angle and current angle
-        delta_angle = cur - average_angle
+        delta_angle = average_angle - cur
 
         # rotate the end of each line in the waypoint .line.a, .line.b around the center of the line
         center_point = new_waypoint.line.a + ((new_waypoint.line.b - new_waypoint.line.a) * 0.5)
@@ -753,3 +752,53 @@ def decimate_waypoints(waypoints: List[Waypoint], threshold: float = 0.2, spread
 
     # here, has some optimised waypoints.
     return decimated_waypoints
+
+
+
+
+
+
+
+
+
+def encode(waypoints: List[Waypoint], central_index: int):
+    X = []
+
+    for f in range(central_index + 1, len(waypoints)):
+        X += [[
+            waypoints[f].line.length(),
+            delta_line_angle(Line(waypoints[f-1].line.center(), waypoints[f].line.center()), waypoints[f-1].line) + (math.pi / 2),
+            delta_line_angle(waypoints[f].line, waypoints[f-1].line),
+            Line(waypoints[f].line.center(), waypoints[f - 1].line.center()).length()
+        ]]
+
+    X = [[
+        waypoints[central_index].line.length(), 0, 0, 0
+    ]] + X
+
+    for n in range(central_index - 1, -1, -1):
+        X = [[
+            waypoints[n].line.length(),
+            delta_line_angle(Line(waypoints[n+1].line.center(), waypoints[n].line.center()), waypoints[n+1].line) - (math.pi / 2),
+            delta_line_angle(waypoints[n+1].line, waypoints[n].line),
+            Line(waypoints[n].line.center(), waypoints[n + 1].line.center()).length()
+        ]] + X
+
+    X.reverse()
+    for x in X:
+        print(x)
+    X.reverse()
+    return X
+
+
+def delta_line_angle(line_a: Line, line_b: Line):
+    current_angle = line_a.angle()
+    other_angle = line_b.angle()
+
+    difference = current_angle - other_angle
+
+    while difference < -math.pi:
+        difference += (math.pi * 2)
+    while difference > math.pi:
+        difference -= (math.pi * 2)
+    return difference

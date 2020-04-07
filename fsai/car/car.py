@@ -10,7 +10,7 @@ class Car:
             pos=Point(0, 0),
             heading=0,
     ):
-        self.pos = pos
+        self.pos: Point = pos
         self.heading = heading
         self.physics = CarPhysics(self)
 
