@@ -780,14 +780,9 @@ def encode(waypoints: List[Waypoint], central_index: int):
         X = [[
             waypoints[n].line.length(),
             delta_line_angle(Line(waypoints[n+1].line.center(), waypoints[n].line.center()), waypoints[n+1].line) - (math.pi / 2),
-            delta_line_angle(waypoints[n+1].line, waypoints[n].line),
+            -(delta_line_angle(waypoints[n+1].line, waypoints[n].line)),
             Line(waypoints[n].line.center(), waypoints[n + 1].line.center()).length()
         ]] + X
-
-    X.reverse()
-    for x in X:
-        print(x)
-    X.reverse()
     return X
 
 

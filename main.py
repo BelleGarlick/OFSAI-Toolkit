@@ -7,8 +7,8 @@ from fsai.visualisation.draw_opencv import render
 track = Track("examples/data/tracks/azure_circuit.json")
 left_boundary, right_boundary, o = track.get_boundary()
 car = track.cars[0]
-car.pos.x += 35
-car.pos.y += 20
+car.pos.x += 48
+car.pos.y += 15
 
 waypoints = gen_local_waypoints(
         car_pos=car.pos,
