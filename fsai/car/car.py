@@ -16,9 +16,10 @@ class Car:
 
         self.mass = 1000
 
-        self.width = 1.2
+        self.width = 0.8
         self.max_steer = 0.6
-        self.wheel_radius = 0.3
+        self.wheel_radius = 0.5
+        self.wheel_width = 0.3
         self.cg_to_front_axle = 0.75
         self.cg_to_rear_axle = 0.75
         self.cg_height = 0.55
