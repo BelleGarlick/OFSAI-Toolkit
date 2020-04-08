@@ -754,16 +754,20 @@ def decimate_waypoints(waypoints: List[Waypoint], threshold: float = 0.2, spread
     return decimated_waypoints
 
 
-
-
-
-
-
-
-
 def encode(waypoints: List[Waypoint], central_index: int):
-    X = []
+    def delta_line_angle(line_a: Line, line_b: Line):
+        current_angle = line_a.angle()
+        other_angle = line_b.angle()
 
+        difference = current_angle - other_angle
+
+        while difference < -math.pi:
+            difference += (math.pi * 2)
+        while difference > math.pi:
+            difference -= (math.pi * 2)
+        return difference
+
+    X = []
     for f in range(central_index + 1, len(waypoints)):
         X += [[
             waypoints[f].line.length(),
@@ -784,16 +788,3 @@ def encode(waypoints: List[Waypoint], central_index: int):
             Line(waypoints[n].line.center(), waypoints[n + 1].line.center()).length()
         ]] + X
     return X
-
-
-def delta_line_angle(line_a: Line, line_b: Line):
-    current_angle = line_a.angle()
-    other_angle = line_b.angle()
-
-    difference = current_angle - other_angle
-
-    while difference < -math.pi:
-        difference += (math.pi * 2)
-    while difference > math.pi:
-        difference -= (math.pi * 2)
-    return difference
