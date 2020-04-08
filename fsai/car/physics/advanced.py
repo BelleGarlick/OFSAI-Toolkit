@@ -35,16 +35,16 @@ class CarPhysics:
         self.gravity = 9.81
         self.air_resist = 2.5
         self.roll_resist = 5
-        self.engine_force = 10000
-        self.brake_force = 12000
+        self.engine_force = 12000
+        self.brake_force = 14000
         self.inertia_scale = 1
-        self.corner_stiffness_front = 0.5
-        self.corner_stiffness_rear = .52
-        self.tire_grip = 50
+        self.corner_stiffness_front = 5
+        self.corner_stiffness_rear = 5.2
+        self.tire_grip = 5
         self.lock_grip = 0.7
         self.e_brake_force = 2000
         
-    def update(self, throttle: float, break_val: float, steer: float, dt: float):
+    def update(self, dt):
 
         self.do_physics(dt)
         
@@ -64,7 +64,7 @@ class CarPhysics:
         axle_weight_rear = self.car.mass * (axle_weight_ratio_rear * self.gravity + self.weight_transfer * self.accel_c[0] * self.car.cg_height / self.__get_wheel_base())
 
         # Resulting velocity of the wheels as result of the yaw rate of the car body.
-        # v = yawrate * r where r is distance from axle to CG and yawRate (angular velocity) in rad/s.
+        # v = yaw rate * r where r is distance from axle to CG and yawRate (angular velocity) in rad/s.
         yaw_speed_front = self.car.cg_to_front_axle * self.yaw_rate
         yaw_speed_rear = -self.car.cg_to_rear_axle * self.yaw_rate
 
@@ -91,20 +91,20 @@ class CarPhysics:
         drag_force_cy = -self.roll_resist * velocity_c_y - self.air_resist * velocity_c_y * abs(velocity_c_y)
 
         # total force in car coordinates
-        totalForce_cx = drag_force_cx + traction_force_cx
-        totalForce_cy = drag_force_cy + traction_force_cy + math.cos(steer_angle) * friction_force_front_cy + friction_force_rear_cy
+        total_force_cx = drag_force_cx + traction_force_cx
+        total_force_cy = drag_force_cy + traction_force_cy + math.cos(steer_angle) * friction_force_front_cy + friction_force_rear_cy
 
         # acceleration along car axes
-        self.accel_c[0] = totalForce_cx / self.car.mass  # forward/reverse accel
-        self.accel_c[1] = totalForce_cy / self.car.mass  # sideways accel
+        self.accel_c[0] = total_force_cx / self.car.mass  # forward/reverse accel
+        self.accel_c[1] = total_force_cy / self.car.mass  # sideways accel
 
         # acceleration in world coordinates
-        self.accel.x = cs * self.accel_c[0] - sn * self.accel_c[1]
-        self.accel.y = sn * self.accel_c[0] + cs * self.accel_c[1]
+        self.accel[0] = cs * self.accel_c[0] - sn * self.accel_c[1]
+        self.accel[1] = sn * self.accel_c[0] + cs * self.accel_c[1]
 
         # update velocity
-        self.velocity.x += self.accel.x * dt
-        self.velocity.y += self.accel.y * dt
+        self.velocity[0] += self.accel[0] * dt
+        self.velocity[1] += self.accel[1] * dt
 
         self.absVel = math.hypot(self.velocity[0], self.velocity[1])
 

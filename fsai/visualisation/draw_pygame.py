@@ -50,7 +50,7 @@ def render(
             pygame.draw.line(pygame_screen, colour, (altered_x1, altered_y1), (altered_x2, altered_y2), radius)
 
     # draw cones into the scene
-    for cone_data in cones:
+    for cone_data in ([] if cones is None else cones):
         colour, radius, cone_list = cone_data
         for cone in cone_list:
             altered_x = int(cone.pos.x * scale + x_offset)

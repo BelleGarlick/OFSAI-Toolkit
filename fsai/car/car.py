@@ -1,6 +1,6 @@
 import math
 
-from fsai.car.physics.basic import CarPhysics
+from fsai.car.physics.advanced import CarPhysics
 from fsai.objects.point import Point
 
 
