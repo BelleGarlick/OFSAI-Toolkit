@@ -1,11 +1,10 @@
 import json
 from typing import List, Tuple
 
+import numpy as np
+
 from fsai.mapping.boundary_estimation import create_boundary
 from fsai.car.car import Car
-from fsai.objects.cone import Cone, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE, CONE_COLOR_BIG_ORANGE
-from fsai.objects.line import Line
-from fsai.objects.point import Point
 
 
 class Track:
@@ -14,10 +13,10 @@ class Track:
         This object can be constructed with a file path to call the load_track path upon.
         :param path: Path to load a track from.
         """
-        self.blue_cones: List[Cone] = []
-        self.yellow_cones: List[Cone] = []
-        self.orange_cones: List[Cone] = []
-        self.big_cones: List[Cone] = []
+        self.blue_cones: np.ndarray = np.zeros((0, 2))
+        self.yellow_cones: np.ndarray = np.zeros((0, 2))
+        self.orange_cones: np.ndarray = np.zeros((0, 2))
+        self.big_cones: np.ndarray = np.zeros((0, 2))
 
         self.cars: List[Car] = []
 
@@ -33,23 +32,22 @@ class Track:
         """
         with open(path) as file:
             track_json = json.loads(file.read())
-            if "blue_cones" in track_json:
-                self.blue_cones = [
-                    Cone(x=c["x"], y=c["y"], color=CONE_COLOR_BLUE) for c in track_json["blue_cones"]]
-            if "yellow_cones" in track_json:
-                self.yellow_cones = [
-                    Cone(x=c["x"], y=c["y"], color=CONE_COLOR_YELLOW) for c in track_json["yellow_cones"]]
-            if "orange_cones" in track_json:
-                self.orange_cones = [
-                    Cone(x=c["x"], y=c["y"], color=CONE_COLOR_ORANGE) for c in track_json["orange_cones"]]
-            if "big_cones" in track_json:
-                self.big_cones = [
-                    Cone(x=c["x"], y=c["y"], color=CONE_COLOR_BIG_ORANGE) for c in track_json["big_cones"]]
+            if "blue_cones" in track_json and len(track_json["blue_cones"]) > 0:
+                self.blue_cones = np.asarray([[c["x"], c["y"]] for c in track_json["blue_cones"]])
+
+            if "yellow_cones" in track_json and len(track_json["yellow_cones"]) > 0:
+                self.yellow_cones = np.asarray([[c["x"], c["y"]] for c in track_json["yellow_cones"]])
+
+            if "orange_cones" in track_json and len(track_json["orange_cones"]) > 0:
+                self.orange_cones = np.asarray([[c["x"], c["y"]] for c in track_json["orange_cones"]])
+
+            if "big_cones" in track_json and len(track_json["big_cones"]) > 0:
+                self.big_cones = np.asarray([[c["x"], c["y"]] for c in track_json["big_cones"]])
 
             if "cars" in track_json:
                 for car_json in track_json["cars"]:
                     car = Car()
-                    car.pos = Point(car_json["pos"]["x"], car_json["pos"]["y"])
+                    car.pos = np.asarray([car_json["pos"]["x"], car_json["pos"]["y"]])
                     car.orientation = car_json["orientation"]
                     self.cars.append(car)
 
@@ -64,7 +62,7 @@ class Track:
             "orange_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.orange_cones],
             "big_cones": [{"x": c.pos.x, "y": c.pos.y} for c in self.big_cones],
             "cars": [
-                {"pos": {"x": car.pos.x, "y": car.pos.y}, "orientation": car.heading} for car in self.cars
+                {"pos": {"x": car.pos[0], "y": car.pos[1]}, "orientation": car.heading} for car in self.cars
             ]
         }
 
@@ -77,7 +75,7 @@ class Track:
         with open(output_path, "w+") as file:
             file.write(json.dumps(self.to_json(), indent=4))
 
-    def get_boundary(self) -> Tuple[List[Line], List[Line], List[Line]]:
+    def get_boundary(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Get the boundary of the track using the fsai.mapping.boundary_estimation.create_boundary method.
         :return: Three lists of lines representing blue, yellow and orange boundaries respectively.
@@ -88,4 +86,3 @@ class Track:
             orange_cones=self.orange_cones,
             big_cones=self.big_cones
         )
-

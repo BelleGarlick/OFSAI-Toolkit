@@ -3,20 +3,19 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 
-from fsai.objects.line import Line
-from fsai.objects.point import Point
+from fsai.objects import geometry
 from fsai.path_planning.waypoint import Waypoint
 
 BLUE_ON_LEFT = 0
 YELLOW_ON_LEFT = 1
 
 
-def gen_local_waypoints(
-        car_pos: Point,
+def gen_waypoints(
+        car_pos: np.ndarray,
         car_angle: float,
-        blue_boundary: List[Line],
-        yellow_boundary: List[Line],
-        orange_boundary: List[Line],
+        blue_boundary: np.ndarray,
+        yellow_boundary: np.ndarray,
+        orange_boundary: np.ndarray,
         foresight: int = 20,
         negative_foresight: int = 10,
         full_track: bool = False,
@@ -111,10 +110,10 @@ def gen_local_waypoints(
         radar_angle_span=radar_span,
         left_boundary_colour=left_boundary_colour
     )
-    # waypoints should be reverse as they are created from the origin going outwards,
+    # way points should be reverse as they are created from the origin going outwards,
     # but we want them in order directional order, so we reverse them here
     reversed_lines.reverse()
-    # merge all waypoints in order of negative foresight -> central waypoints -> forward waypoints
+    # merge all way points in order of negative foresight -> central way points -> forward way points
     all_waypoints = reversed_lines + [initial_waypoint] + forward_lines
 
     # apply error margin
@@ -125,11 +124,11 @@ def gen_local_waypoints(
 
 
 def create_waypoint_at_pos(
-        point: Point,
+        point: np.ndarray,
         angle: float,
-        blue_boundary: List[Line],
-        yellow_boundary: List[Line],
-        orange_boundary: List[Line],
+        blue_boundary: np.ndarray,
+        yellow_boundary: np.ndarray,
+        orange_boundary: np.ndarray,
         left_boundary_colour: int = BLUE_ON_LEFT,
         radar_line_count: int = 15,
         radar_line_length: float = 20,
@@ -155,15 +154,13 @@ def create_waypoint_at_pos(
     # threshold all lines we check by making sure they're close enough. This is to limit the search range and reduce
     # computation time.
     radar_line_radius = radar_line_length / 2
-    blue_lines = [line for line in blue_boundary
-                  if line.a.distance(point) < radar_line_radius or line.b.distance(point) < radar_line_radius]
-    yellow_lines = [line for line in yellow_boundary
-                    if line.a.distance(point) < radar_line_radius or line.b.distance(point) < radar_line_radius]
-    orange_lines = [line for line in orange_boundary
-                    if line.a.distance(point) < radar_line_radius or line.b.distance(point) < radar_line_radius]
+
+    blue_lines = blue_boundary[(geometry.distances(point, blue_boundary[:, 0:2]) < radar_line_radius) & (geometry.distances(point, blue_boundary[:, 2:4]) < radar_line_radius)]
+    yellow_lines = yellow_boundary[(geometry.distances(point, yellow_boundary[:, 0:2]) < radar_line_radius) & (geometry.distances(point, yellow_boundary[:, 2:4]) < radar_line_radius)]
+    orange_lines = orange_boundary[(geometry.distances(point, orange_boundary[:, 0:2]) < radar_line_radius) & (geometry.distances(point, orange_boundary[:, 2:4]) < radar_line_radius)]
 
     # Create a list of radar lines that pass through the origin point
-    lines: List[Tuple[Line, Line]] = __get_radar_lines_around_point(
+    lines: List[Tuple[np.ndarray, np.ndarray]] = __get_radar_lines_around_point(
         point,
         angle,
         count=radar_line_count,
@@ -184,13 +181,13 @@ def create_waypoint_at_pos(
 
 
 def create_waypoint_lines(
-        initial_point: Point,
+        initial_point: np.ndarray,
         initial_angle: float,
         count: int,
         spacing: float,
-        blue_boundary: List[Line],
-        yellow_boundary: List[Line],
-        orange_boundary: List[Line],
+        blue_boundary: np.ndarray,
+        yellow_boundary: np.ndarray,
+        orange_boundary: np.ndarray,
         overlap=False,
         reverse=False,
         bias: float = 0,
@@ -212,21 +209,21 @@ def create_waypoint_lines(
     :param blue_boundary: The blue boundary of the track
     :param yellow_boundary: The yellow boundary of the track
     :param orange_boundary: The orange boundary of the track
-    :param overlap: Are the waypoints allowed to overlap themselves.
-    :param reverse: Are the waypoints to be reversed. Not line reversing a list, but reversing line.a <-> line.b
+    :param overlap: Are the way points allowed to overlap themselves.
+    :param reverse: Are the way points to be reversed. Not line reversing a list, but reversing line.a <-> line.b
     :param bias: The bias of the track. See '__get_most_perpendicular_line_to_boundary'
     :param bias_strength: The bias strength of the track. See '__get_most_perpendicular_line_to_boundary'
-    :param max_radar_length: Maximum length a waypoint line can be
+    :param max_radar_length: Maximum length a way point line can be
     :param radar_count: The amount of plausible radar lines to create in order to find the best radar line
     :param radar_angle_span: Total radians that the stems line span from. See '__create_radar_lines'
     :param left_boundary_colour: Which colour boundary is on the left [BLUE_ON_LEFT, YELLOW_ON_LEFT]
-    :return: A list of waypoints in the direction, from the origin point provided
+    :return: A list of way points in the direction, from the origin point provided
     """
     # store all the waypoints generated here
     waypoint_lines: List[Waypoint] = []
 
     # store a buffer of the current point and angle to generate the next waypoint for
-    last_point: Point = initial_point
+    last_point: np.ndarray = initial_point
     last_angle: float = initial_angle
 
     for i in range(count):
@@ -247,31 +244,31 @@ def create_waypoint_lines(
             left_boundary_colour=left_boundary_colour
         )
 
-        # add the new waypoint to the waypoint lines
+        # add the new way point to the way point lines
         waypoint_lines.append(next_waypoint)
 
         # calculate the next angle and origin point
         next_point = next_waypoint.get_optimum_point()
-        last_angle = last_point.angle_to(next_point)
+        last_angle = geometry.angle_to(last_point, next_point)
         last_point = next_point
 
-        # if we have want no overlap then we will prevent it by checking if the first waypoint and the current
-        # waypoint get to close then we break the loop - this is only useful for calculating the full track
+        # if we have want no overlap then we will prevent it by checking if the first way point and the current
+        # way point get to close then we break the loop - this is only useful for calculating the full track
         if not overlap and i > 3:
             # see if the distances are close enough to close the track
-            waypoint_center: Point = next_waypoint.line.a + ((next_waypoint.line.b - next_waypoint.line.a) * 0.5)
-            if waypoint_center.distance(initial_point) < spacing * 1.4:
+            waypoint_center = next_waypoint.line[0:2] + ((next_waypoint.line[2:4] - next_waypoint.line[0:2]) * 0.5)
+            if geometry.distance(waypoint_center, initial_point) < spacing * 1.4:
                 break
 
     return waypoint_lines
 
 
 def get_next_waypoint(
-    starting_point: Point,
+    starting_point: np.ndarray,
     direction: float,
-    blue_boundary: List[Line],
-    yellow_boundary: List[Line],
-    orange_boundary: List[Line],
+    blue_boundary: np.ndarray,
+    yellow_boundary: np.ndarray,
+    orange_boundary: np.ndarray,
     spacing: float = 3,
     max_length: float = 20,
     radar_count: int = 13,
@@ -313,19 +310,9 @@ def get_next_waypoint(
     distance = (spacing**2 + (max_length / 2)**2) ** (1/2)
 
     # loop through blue lines finding potential intersections
-    plausible_blue_boundaries = [
-        boundary_line for boundary_line in blue_boundary
-        if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
-
-    # loop through yellow lines finding potential intersections
-    plausible_yellow_boundaries = [
-        boundary_line for boundary_line in yellow_boundary
-        if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
-
-    # loop through orange lines finding potential intersections
-    plausible_orange_boundaries = [
-        boundary_line for boundary_line in orange_boundary
-        if starting_point.distance(boundary_line.a) < distance or starting_point.distance(boundary_line.b) < distance]
+    plausible_blue_boundaries = blue_boundary[(geometry.distances(starting_point, blue_boundary[:, 0:2]) < distance) & (geometry.distances(starting_point, blue_boundary[:, 2:4]) < distance)]
+    plausible_yellow_boundaries = yellow_boundary[(geometry.distances(starting_point, yellow_boundary[:, 0:2]) < distance) & (geometry.distances(starting_point, yellow_boundary[:, 2:4]) < distance)]
+    plausible_orange_boundaries = orange_boundary[(geometry.distances(starting_point, orange_boundary[:, 0:2]) < distance) & (geometry.distances(starting_point, orange_boundary[:, 2:4]) < distance)]
 
     # create the radar lines, which are the plausible waypoint lines that the could be the ideal waypoint line
     radar_lines = __create_radar_lines(
@@ -353,14 +340,14 @@ def get_next_waypoint(
 
 
 def __create_radar_lines(
-        initial_point: Point,
+        initial_point: np.ndarray,
         initial_angle: float,
         spacing: float = 2,  # meters
         line_count: int = 13,
         angle_span: float = math.pi,
         length: float = 10,
         reverse=False
-) -> List[Tuple[Line, Line]]:
+) -> List[Tuple[np.ndarray, np.ndarray]]:
     """
     This function is the building blocks of the waypoint algorithm. Given a point and a heading direction, we wish to
     find the next waypoint. This is done by creating 'stem' lines, which span outwards from the initial point in the
@@ -392,7 +379,7 @@ def __create_radar_lines(
     :return: List of radar lines (potential waypoints)
     """
     # store the list of tuples of sub-lines
-    sub_lines: List[Tuple[Line, Line]] = []
+    sub_lines: List[Tuple[np.ndarray, np.ndarray]] = []
 
     # since the stem lines span over some angle, we calculate a starting angle and delta angle
     angle_change = angle_span / (line_count - 1)
@@ -405,12 +392,11 @@ def __create_radar_lines(
 
         # then create a point which to create the radar lines from and rotate it around the initial point
         # this create the stem line, which the radar line can be drawn from
-        p = Point(initial_point.x + spacing, initial_point.y)
-        p.rotate_around(initial_point, current_angle)
+        p = geometry.rotate([initial_point[0] + spacing, initial_point[1]], current_angle, initial_point)
 
         # create left point and right point of the line respectively
-        la = Point(p.x, p.y - length / 2)
-        lb = Point(p.x, p.y + length / 2)
+        la = [p[0], p[1] - length / 2]
+        lb = [p[0], p[1] + length / 2]
 
         # in the event the track is going backwards for the negative
         # waypoints, then we need to flip either end of the line
@@ -419,19 +405,19 @@ def __create_radar_lines(
 
         # around the current point, in order to create the arching line which is
         # perpendicular line to the  outwards line
-        la.rotate_around(p, current_angle)
-        lb.rotate_around(p, current_angle)
+        la = geometry.rotate(la, current_angle, p)
+        lb = geometry.rotate(lb, current_angle, p)
 
         # create a line which is the collection of sub-lines
-        sub_lines.append((Line(a=la, b=p), Line(a=lb, b=p)))
+        sub_lines.append((np.hstack((la, p)), np.hstack((lb, p))))
     return sub_lines
 
 
 def __get_most_perpendicular_line_to_boundary(
-        lines: List[Tuple[Line, Line]],
-        blue_boundary: List[Line],
-        yellow_boundary: List[Line],
-        orange_boundary: List[Line],
+        lines: List[Tuple[np.ndarray, np.ndarray]],
+        blue_boundary: np.ndarray,
+        yellow_boundary: np.ndarray,
+        orange_boundary: np.ndarray,
         bias: float = 0,
         bias_strength: float = 0.2,
         left_colour: int = BLUE_ON_LEFT
@@ -466,43 +452,46 @@ def __get_most_perpendicular_line_to_boundary(
     line_count: int = len(lines)
 
     # loop through each line in the list of lines to find the more perpendicular line
+    # TODO This can prolly be multi processed
     for i in range(line_count):
         line = lines[i]
         # set up defaults for the waypoints, optimum 0.5 (middle) and not sticky
         optimum, sticky = 0.5, False
 
         # dependant on what colour is on left, we can swap the way we search for points
+        blue_orange_boundary = np.hstack((blue_boundary, orange_boundary)) if len(orange_boundary) > 0 else blue_boundary
+        yellow_orange_boundary = np.hstack((yellow_boundary, orange_boundary)) if len(orange_boundary) > 0 else yellow_boundary
         if left_colour == BLUE_ON_LEFT:
-            left_intersections: List[Point] = __get_intersection_points(line[0], blue_boundary + orange_boundary)
-            right_intersections: List[Point] = __get_intersection_points(line[1], yellow_boundary + orange_boundary)
+            left_intersections = geometry.segment_intersections(line[0], blue_orange_boundary)
+            right_intersections = geometry.segment_intersections(line[1], yellow_orange_boundary)
         else:
-            left_intersections: List[Point] = __get_intersection_points(line[0], yellow_boundary + orange_boundary)
-            right_intersections: List[Point] = __get_intersection_points(line[1], blue_boundary + orange_boundary)
+            left_intersections = geometry.segment_intersections(line[0], yellow_orange_boundary)
+            right_intersections = geometry.segment_intersections(line[1], blue_orange_boundary)
 
         # check the amount of intersections.
         # if a line does not intersect then we can use the end of the
         # end of the line as a dummy intersection point to draw the
         # line shortest line to.
         if len(left_intersections) == 0 and len(right_intersections) == 0:
-            left_intersections = [line[0].a]
-            right_intersections = [line[1].a]
+            left_intersections = [line[0][0:2]]
+            right_intersections = [line[1][0:2]]
             sticky = True
         elif len(left_intersections) == 0:
-            left_intersections = [line[0].a]
+            left_intersections = [line[0][0:2]]
             optimum = 1
             sticky = True
         elif len(right_intersections) == 0:
-            right_intersections = [line[1].a]
+            right_intersections = [line[1][0:2]]
             optimum = 0
             sticky = True
 
         # find the two points closest to the center of the line (line[0].b == line[1].b === center of line)
-        center_points = line[0].b
-        point_a = center_points.get_closest_point(left_intersections)
-        point_b = center_points.get_closest_point(right_intersections)
+        center_points = line[0][2:4]
+        point_a = geometry.closest_point(center_points, left_intersections)
+        point_b = geometry.closest_point(center_points, right_intersections)
 
         # calculate the distance of hte two points
-        distance = point_a[0].distance(point_b[0])
+        distance = geometry.distance(point_a, point_b)
 
         # Here we can apply the bias, explained in the method documentation. First we calculate how much bias to apply
         # for the current angle
@@ -514,19 +503,19 @@ def __get_most_perpendicular_line_to_boundary(
         # then we can compare hte smallest line with the heuristic
         if smallest_line is None or distance < closest_distance:
             # bae is schmol line so we update the smallest known line
-            smallest_line = Waypoint(line=Line(point_a[0], point_b[0]), optimum=optimum, sticky=sticky)
+            smallest_line = Waypoint(line=np.hstack((point_a, point_b)), optimum=optimum, sticky=sticky)
             closest_distance = distance
 
     return smallest_line
 
 
 def __get_radar_lines_around_point(
-        origin: Point,
+        origin: np.ndarray,
         angle: float,
         count: int = 10,
         length: float = 10,
         total_span: float = math.pi / 2
-) -> List[Tuple[Line, Line]]:
+) -> List[Tuple[np.ndarray, np.ndarray]]:
     """
     This function will create a list of lines that rotate around an origin point (where each line passes through the
     origin). The lines produce potential waypoints around a point which we can selected as a waypoint for a particular
@@ -565,33 +554,14 @@ def __get_radar_lines_around_point(
     # create a line infront of the car X (count) times.
     for i in range(count):
         # create and rotate the point the correct amount
-        p = Point(x=origin.x + length / 2, y=origin.y)
-        p.rotate_around(position=origin, angle=initial_angle + angle_change * i)
+        p = geometry.rotate([origin[0] + length / 2, origin[1]], angle=initial_angle + angle_change * i, around=origin)
 
+        p_adjusted = p - (p - origin) * 2
+        line = (np.hstack((p, origin)), np.hstack((p_adjusted, origin)))
         # create the line form the origin to this newly rotated point
-        lines.append((Line(a=p, b=origin), Line(a=p - (p - origin) * 2, b=origin)))
+        lines.append(line)
 
     return lines
-
-
-def __get_intersection_points(line: Line, boundaries: List[Line]):
-    """
-    Get all points where a given line intersects a list of given lines. This is used to detect where lines
-    intersect boundary lines.
-
-    :param line: Line to detect intersections upon
-    :param boundaries: Boundary lines
-    :return: List of point of all the intersections the given line has with the boundary.
-    """
-    points: List[Point] = []
-    # loop through the boundary
-    for boundary in boundaries:
-        # find the intersection points
-        point = line.intersects(boundary)
-        if point is not None:
-            # add the intersection points to the list
-            points.append(point)
-    return points
 
 
 def apply_error_margin(waypoints: List[Waypoint], margin: float) -> List[Waypoint]:
@@ -614,11 +584,11 @@ def apply_error_margin(waypoints: List[Waypoint], margin: float) -> List[Waypoin
     for waypoint in waypoints:
         # In the even the waypoint is too large then we cap it at half the waypoints length + error
         # This is to prevent the waypoint from becoming so negative that it flips it self.
-        altered_margin = min(waypoint.line.length() / 2 - 0.01, margin)
-        normalised_point = waypoint.line.normalise()  # calculate normalised vector
+        altered_margin = min(geometry.length(waypoint.line) / 2 - 0.01, margin)
+        normalised_point = geometry.normalise(waypoint.line)  # calculate normalised vector
         normalised_point = normalised_point * altered_margin  # multiply the vector by the length of the margin
-        waypoint.line.a.add(normalised_point)  # apply vector to line
-        waypoint.line.b.sub(normalised_point)  # apply vector to the line
+        waypoint.line[0:2] += normalised_point  # apply vector to line
+        waypoint.line[2:4] -= normalised_point  # apply vector to the line
 
     # return the shortened waypoints.
     return waypoints
@@ -652,15 +622,13 @@ def smoothify(current_lines: List[Waypoint], full_track: bool):
         new_waypoint: Waypoint = current_lines[i].copy()
 
         # get the angle of the surrounding waypoints
-        pre = current_lines[i - 1].line.angle()
-        cur = current_lines[i].line.angle()
-        nex = current_lines[(i + 1) % len(current_lines)].line.angle()
+        pre = geometry.angle(current_lines[i - 1].line)
+        cur = geometry.angle(current_lines[i].line)
+        nex = geometry.angle(current_lines[(i + 1) % len(current_lines)].line)
 
         # create a normalised vector for each angle which we wish to add, then add the vectors and get an average
         # angle from that. You must never average two angles the normal way. Average of 359 and 1 is 0, not 180...
-        x, y = math.cos(pre), math.sin(pre)
-        x, y = x + math.cos(cur), y + math.sin(cur)
-        x, y = x + math.cos(nex), y + math.sin(nex)
+        x, y = math.cos(pre) + math.cos(cur) + math.cos(nex), math.sin(pre) + math.sin(cur) + math.sin(nex)
 
         # calculate angle of the sum of the vectors
         average_angle = math.atan2(y, x)
@@ -669,9 +637,9 @@ def smoothify(current_lines: List[Waypoint], full_track: bool):
         delta_angle = average_angle - cur
 
         # rotate the end of each line in the waypoint .line.a, .line.b around the center of the line
-        center_point = new_waypoint.line.a + ((new_waypoint.line.b - new_waypoint.line.a) * 0.5)
-        new_waypoint.line.a.rotate_around(center_point, delta_angle)
-        new_waypoint.line.b.rotate_around(center_point, delta_angle)
+        center_point = new_waypoint.line[0:2] + ((new_waypoint.line[2:4] - new_waypoint.line[0:2]) * 0.5)
+        new_waypoint.line[0:2] = geometry.rotate(new_waypoint.line[0:2], delta_angle, center_point)
+        new_waypoint.line[2:4] = geometry.rotate(new_waypoint.line[2:4], delta_angle, center_point)
 
         # add the newly rotated waypoint to the list of smooth waypoints
         smooth_waypoints.append(new_waypoint)
@@ -713,9 +681,9 @@ def decimate_waypoints(waypoints: List[Waypoint], threshold: float = 0.2, spread
     # sure the generated line knows where it should heard towards.
     for i in range(1, waypoint_count - 1):
         # get the angle of the surounding lines
-        p: float = waypoints[i - 1].line.angle()
-        c: float = waypoints[i].line.angle()
-        n: float = waypoints[(i + 1) % waypoint_count].line.angle()
+        p: float = geometry.angle(waypoints[i - 1].line)
+        c: float = geometry.angle(waypoints[i].line)
+        n: float = geometry.angle(waypoints[(i + 1) % waypoint_count].line)
 
         # calculate the absolute change in angle bounded between -pi:pi
         a: float = abs((p - c + math.pi) % (math.pi*2) - math.pi)
@@ -755,9 +723,9 @@ def decimate_waypoints(waypoints: List[Waypoint], threshold: float = 0.2, spread
 
 
 def encode(waypoints: List[Waypoint], central_index: int):
-    def delta_line_angle(line_a: Line, line_b: Line):
-        current_angle = line_a.angle()
-        other_angle = line_b.angle()
+    def delta_line_angle(line_a: np.ndarray, line_b: np.ndarray):
+        current_angle = geometry.angle(line_a)
+        other_angle = geometry.angle(line_b)
 
         difference = current_angle - other_angle
 
@@ -769,22 +737,28 @@ def encode(waypoints: List[Waypoint], central_index: int):
 
     X = []
     for f in range(central_index + 1, len(waypoints)):
+        current_center = geometry.line_center(waypoints[f].line)
+        prev_center = geometry.line_center(waypoints[f-1].line)
+
         X += [[
-            waypoints[f].line.length(),
-            delta_line_angle(Line(waypoints[f-1].line.center(), waypoints[f].line.center()), waypoints[f-1].line) + (math.pi / 2),
+            geometry.length(waypoints[f].line),
+            delta_line_angle(np.hstack((prev_center, current_center)), waypoints[f-1].line) + (math.pi / 2),
             delta_line_angle(waypoints[f].line, waypoints[f-1].line),
-            Line(waypoints[f].line.center(), waypoints[f - 1].line.center()).length()
+            geometry.distance(current_center, prev_center)
         ]]
 
     X = [[
-        waypoints[central_index].line.length(), 0, 0, 0
+        geometry.length(waypoints[central_index].line), 0, 0, 0
     ]] + X
 
     for n in range(central_index - 1, -1, -1):
+        current_center = geometry.line_center(np.array([waypoints[n].line[0], waypoints[n].line[1], waypoints[n].line[2], waypoints[n].line[3]]))
+        prev_center = geometry.line_center(np.array([waypoints[n+1].line[2], waypoints[n+1].line[3], waypoints[n+1].line[2], waypoints[n+1].line[3]]))
+
         X = [[
-            waypoints[n].line.length(),
-            delta_line_angle(Line(waypoints[n+1].line.center(), waypoints[n].line.center()), waypoints[n+1].line) - (math.pi / 2),
+            geometry.length(waypoints[n].line),
+            delta_line_angle(np.hstack((prev_center, current_center)), waypoints[n+1].line) - (math.pi / 2),
             -(delta_line_angle(waypoints[n+1].line, waypoints[n].line)),
-            Line(waypoints[n].line.center(), waypoints[n + 1].line.center()).length()
+            geometry.distance(current_center, prev_center)
         ]] + X
     return X

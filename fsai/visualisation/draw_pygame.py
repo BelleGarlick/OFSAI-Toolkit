@@ -110,34 +110,34 @@ def render_area(
 
 def render_car(image, car: Car, scale, resolution, rotation, camera_pos, x_offset, y_offset):
     body_points = [
-        Point(car.pos.x + car.cg_to_front, car.pos.y - car.width / 2),
-        Point(car.pos.x + car.cg_to_front, car.pos.y + car.width / 2),
-        Point(car.pos.x - car.cg_to_rear, car.pos.y + car.width / 2),
-        Point(car.pos.x - car.cg_to_rear, car.pos.y - car.width / 2)
+        Point(car.pos[0] + car.cg_to_front, car.pos[1] - car.width / 2),
+        Point(car.pos[0] + car.cg_to_front, car.pos[1] + car.width / 2),
+        Point(car.pos[0] - car.cg_to_rear, car.pos[1] + car.width / 2),
+        Point(car.pos[0] - car.cg_to_rear, car.pos[1] - car.width / 2)
     ]
     rear_left_tire_points = [
-        Point(car.pos.x - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos.y - car.width / 2 - car.wheel_width),
-        Point(car.pos.x - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos.y - car.width / 2),
-        Point(car.pos.x - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos.y - car.width / 2),
-        Point(car.pos.x - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos.y - car.width / 2 - car.wheel_width)
+        Point(car.pos[0] - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos[1] - car.width / 2 - car.wheel_width),
+        Point(car.pos[0] - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos[1] - car.width / 2),
+        Point(car.pos[0] - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos[1] - car.width / 2),
+        Point(car.pos[0] - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos[1] - car.width / 2 - car.wheel_width)
     ]
     rear_right_tire_points = [
-        Point(car.pos.x - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos.y + car.width / 2 + car.wheel_width),
-        Point(car.pos.x - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos.y + car.width / 2),
-        Point(car.pos.x - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos.y + car.width / 2),
-        Point(car.pos.x - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos.y + car.width / 2 + car.wheel_width)
+        Point(car.pos[0] - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos[1] + car.width / 2 + car.wheel_width),
+        Point(car.pos[0] - car.cg_to_rear_axle + car.wheel_radius / 2, car.pos[1] + car.width / 2),
+        Point(car.pos[0] - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos[1] + car.width / 2),
+        Point(car.pos[0] - car.cg_to_rear_axle - car.wheel_radius / 2, car.pos[1] + car.width / 2 + car.wheel_width)
     ]
     front_left_tire_points = [
-        Point(car.pos.x + car.cg_to_front_axle + car.wheel_radius / 2, car.pos.y - car.width / 2 - car.wheel_width),
-        Point(car.pos.x + car.cg_to_front_axle + car.wheel_radius / 2, car.pos.y - car.width / 2),
-        Point(car.pos.x + car.cg_to_front_axle - car.wheel_radius / 2, car.pos.y - car.width / 2),
-        Point(car.pos.x + car.cg_to_front_axle - car.wheel_radius / 2, car.pos.y - car.width / 2 - car.wheel_width)
+        Point(car.pos[0] + car.cg_to_front_axle + car.wheel_radius / 2, car.pos[1] - car.width / 2 - car.wheel_width),
+        Point(car.pos[0] + car.cg_to_front_axle + car.wheel_radius / 2, car.pos[1] - car.width / 2),
+        Point(car.pos[0] + car.cg_to_front_axle - car.wheel_radius / 2, car.pos[1] - car.width / 2),
+        Point(car.pos[0] + car.cg_to_front_axle - car.wheel_radius / 2, car.pos[1] - car.width / 2 - car.wheel_width)
     ]
     front_right_tire_points = [
-        Point(car.pos.x + car.cg_to_front_axle + car.wheel_radius / 2, car.pos.y + car.width / 2 + car.wheel_width),
-        Point(car.pos.x + car.cg_to_front_axle + car.wheel_radius / 2, car.pos.y + car.width / 2),
-        Point(car.pos.x + car.cg_to_front_axle - car.wheel_radius / 2, car.pos.y + car.width / 2),
-        Point(car.pos.x + car.cg_to_front_axle - car.wheel_radius / 2, car.pos.y + car.width / 2 + car.wheel_width)
+        Point(car.pos[0] + car.cg_to_front_axle + car.wheel_radius / 2, car.pos[1] + car.width / 2 + car.wheel_width),
+        Point(car.pos[0] + car.cg_to_front_axle + car.wheel_radius / 2, car.pos[1] + car.width / 2),
+        Point(car.pos[0] + car.cg_to_front_axle - car.wheel_radius / 2, car.pos[1] + car.width / 2),
+        Point(car.pos[0] + car.cg_to_front_axle - car.wheel_radius / 2, car.pos[1] + car.width / 2 + car.wheel_width)
     ]
 
     for point in body_points:
@@ -148,10 +148,10 @@ def render_car(image, car: Car, scale, resolution, rotation, camera_pos, x_offse
         point.rotate_around(car.pos, car.heading)
     for point in front_left_tire_points:
         point.rotate_around(car.pos, car.heading)
-        point.rotate_around(Point(car.pos.x + car.cg_to_front_axle, car.pos.y - (car.width / 2) - (car.wheel_width / 2)), car.steer * car.max_steer)
+        point.rotate_around(Point(car.pos[0] + car.cg_to_front_axle, car.pos[1] - (car.width / 2) - (car.wheel_width / 2)), car.steer * car.max_steer)
     for point in front_right_tire_points:
         point.rotate_around(car.pos, car.heading)
-        point.rotate_around(Point(car.pos.x + car.cg_to_front_axle, car.pos.y + (car.width / 2) + (car.wheel_width / 2)), car.steer * car.max_steer)
+        point.rotate_around(Point(car.pos[0] + car.cg_to_front_axle, car.pos[1] + (car.width / 2) + (car.wheel_width / 2)), car.steer * car.max_steer)
 
     render_polygon(image, body_points, (0, 0, 255), scale, resolution, rotation, camera_pos, x_offset, y_offset)
     render_polygon(image, rear_left_tire_points, (100, 100, 100), scale, resolution, rotation, camera_pos, x_offset, y_offset)

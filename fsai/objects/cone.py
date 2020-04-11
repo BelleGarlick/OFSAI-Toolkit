@@ -1,4 +1,4 @@
-from fsai.objects.point import Point
+import numpy as np
 
 
 # Integer enums representing the colours of the cone
@@ -11,9 +11,7 @@ CONE_COLOR_ORANGE = 3
 class Cone:
     def __init__(
             self,
-            x: float = 0,
-            y: float = 0,
-            pos: Point = None,
+            pos: np.ndarray = np.zeros((0, 2)),
             color: int = CONE_COLOR_BLUE
     ):
         """
@@ -28,9 +26,9 @@ class Cone:
         :param pos: Optional position of the cone
         :param color: Color of the cone, represented as an int
         """
-        self.pos = Point(x, y)
+        self.pos = np.ndarray
         if pos is not None:
-            self.pos: Point = pos
+            self.pos = pos
 
         self.color = color
 
@@ -39,7 +37,7 @@ class Cone:
         Create a new deep copy of the cone object
         :return: New mutable cone object
         """
-        return Cone(x=self.pos.x, y=self.pos.y, color=self.color)
+        return Cone(self.pos, color=self.color)
 
     def __str__(self):
         return "Point: ({}), Color: {}".format(self.pos, self.color)
