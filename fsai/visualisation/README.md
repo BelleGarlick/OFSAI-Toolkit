@@ -130,6 +130,7 @@ last_update = time.time()
 while running:
     now = time.time()
     dt = now - last_update
+    pygame.event.get()
 
     # Set car driving based upon the joystick inputs
     if joystick is not None:

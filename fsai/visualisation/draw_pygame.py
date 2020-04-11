@@ -90,7 +90,7 @@ def render_area(
             render_line(pygame_screen, line, colour, 1, resolution, rotation, camera_pos, x_offset, y_offset)
 
     # draw cones into the scene
-    for cone_data in cones:
+    for cone_data in ([] if cones is None else cones):
         colour, radius, cone_list = cone_data
         for cone in cone_list:
             render_point(pygame_screen, cone.pos, colour, 1, resolution, rotation, camera_pos, radius, x_offset, y_offset)

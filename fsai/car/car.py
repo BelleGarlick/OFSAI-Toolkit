@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from fsai.car.physics.basic import CarPhysics
+from fsai.car.physics.advanced import CarPhysics
 
 
 class Car:

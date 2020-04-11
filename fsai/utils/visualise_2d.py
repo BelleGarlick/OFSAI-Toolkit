@@ -36,6 +36,7 @@ def __get_image_bounds(
     :return:
     """
     min_x, min_y, max_x, max_y = math.inf, math.inf, -math.inf, -math.inf
+    cones = [] if cones is None else cones
     for cone_tuples in cones:
         for cone in cone_tuples[2]:
             min_x = min(min_x, cone.pos.x)
