@@ -3,24 +3,29 @@ from typing import List, Dict, Set, Tuple
 import numpy as np
 from scipy.spatial import Delaunay
 
-from fsai.objects.line import Line
-from fsai.objects.cone import Cone, CONE_COLOR_BIG_ORANGE, CONE_COLOR_BLUE, CONE_COLOR_YELLOW
+from fsai.objects import geometry
+from fsai.objects.cone import Cone, CONE_COLOR_BIG_ORANGE, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE
 
 
 def create_boundary(
-    blue_cones: List[Cone] = None,
-    yellow_cones: List[Cone] = None,
-    orange_cones: List[Cone] = None,
-    big_cones: List[Cone] = None
-) -> Tuple[List[Line], List[Line], List[Line]]:
+    blue_cones: np.ndarray = None,
+    yellow_cones: np.ndarray = None,
+    orange_cones: np.ndarray = None,
+    big_cones: np.ndarray = None
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if blue_cones is None: blue_cones = np.zeros((0, 2))
+    if yellow_cones is None: yellow_cones =  np.zeros((0, 2))
+    if orange_cones is None: orange_cones =  np.zeros((0, 2))
+    if big_cones is None: big_cones =  np.zeros((0, 2))
 
-    if blue_cones is None: blue_cones = []
-    if yellow_cones is None: yellow_cones = []
-    if orange_cones is None: orange_cones = []
-    if big_cones is None: big_cones = []
+    blue_cones = [Cone(pos, CONE_COLOR_BLUE) for pos in blue_cones]
+    yellow_cones = [Cone(pos, CONE_COLOR_YELLOW) for pos in yellow_cones]
+    orange_cones = [Cone(pos, CONE_COLOR_ORANGE) for pos in orange_cones]
+    big_cones = [Cone(pos, CONE_COLOR_BIG_ORANGE) for pos in big_cones]
+
     big_cones = __merge_big_cones(big_cones)
 
-    delaunay = get_delaunay_triangles(
+    delaunay = __get_delaunay_triangles(
         blue_cones,
         yellow_cones,
         orange_cones,
@@ -44,17 +49,17 @@ def create_boundary(
         if cone.color == CONE_COLOR_BLUE:
             for connection in track_graph[cone]:
                 if connection.color == CONE_COLOR_BLUE:
-                    blue_boundaries.append(Line(cone.pos, connection.pos))
+                    blue_boundaries.append([cone.pos[0], cone.pos[1], connection.pos[0], connection.pos[1]])
 
         if cone.color == CONE_COLOR_YELLOW:
             for connection in track_graph[cone]:
                 if connection.color == CONE_COLOR_YELLOW:
-                    yellow_boundaries.append(Line(cone.pos, connection.pos))
+                    yellow_boundaries.append([cone.pos[0], cone.pos[1], connection.pos[0], connection.pos[1]])
 
         if cone.color == CONE_COLOR_BIG_ORANGE:
             cones = [{
                 "cone": connection,
-                "length": connection.pos.distance(cone.pos)
+                "length": geometry.distance(connection.pos, cone.pos)
             } for connection in track_graph[cone]]
             cones = sorted(cones, key=lambda item: item['length'])
             closest_blue, closest_yellow = [], []
@@ -63,23 +68,18 @@ def create_boundary(
                 if closest_cone["cone"].color == CONE_COLOR_BLUE: closest_blue.append(closest_cone["cone"])
 
                 if len(closest_blue) >= 2:
-                    orange_boundaries.append(Line(closest_blue[0].pos, cone.pos))
-                    orange_boundaries.append(Line(closest_blue[1].pos, cone.pos))
+                    orange_boundaries.append([closest_blue[0].pos[0], closest_blue[0].pos[1], cone.pos[0], cone.pos[1]])
+                    orange_boundaries.append([closest_blue[1].pos[0], closest_blue[1].pos[1], cone.pos[0], cone.pos[1]])
                     break
                 if len(closest_yellow) >= 2:
-                    orange_boundaries.append(Line(closest_yellow[0].pos, cone.pos))
-                    orange_boundaries.append(Line(closest_yellow[1].pos, cone.pos))
+                    orange_boundaries.append([closest_yellow[0].pos[0], closest_yellow[0].pos[1], cone.pos[0], cone.pos[1]])
+                    orange_boundaries.append([closest_yellow[1].pos[0], closest_yellow[1].pos[1], cone.pos[0], cone.pos[1]])
                     break
 
-    return blue_boundaries, yellow_boundaries, orange_boundaries
+    return np.array(blue_boundaries).reshape((len(blue_boundaries), 4)), np.array(yellow_boundaries).reshape((len(yellow_boundaries), 4)), np.array(orange_boundaries).reshape((len(orange_boundaries), 4))
 
 
-def get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None, big_cones=None):
-    if blue_cones is None: blue_cones = []
-    if yellow_cones is None: yellow_cones = []
-    if orange_cones is None: orange_cones = []
-    if big_cones is None: big_cones = []
-
+def __get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None, big_cones=None):
     triangles, invalid = [], []
 
     all_cones = blue_cones + yellow_cones + orange_cones + big_cones
@@ -115,7 +115,7 @@ def __get_delaunay_triangulations(all_cones: List[Cone]) -> List[List[Cone]]:
     :return: List of lists of cones representing the list of triangles
     """
 
-    delaunay = Delaunay(np.asarray([[cone.pos.x, cone.pos.y] for cone in all_cones]))
+    delaunay = Delaunay(np.asarray([cone.pos for cone in all_cones]))
 
     # convert triangles from list of indexes to list of cones
     delaunay = [[all_cones[tri[0]], all_cones[tri[1]], all_cones[tri[2]]] for tri in delaunay.simplices]
@@ -134,7 +134,7 @@ def __merge_big_cones(big_cones: List[Cone]):
     for cone in big_cones:
         too_close = False
         for merged_cone in merged_orange_cones:
-            too_close = too_close or cone.pos.distance(merged_cone.pos) < 2.75
+            too_close = too_close or geometry.distance(cone.pos, merged_cone.pos) < 2.75
         if not too_close:
-            merged_orange_cones.append(cone)
+            merged_orange_cones += [cone]
     return merged_orange_cones

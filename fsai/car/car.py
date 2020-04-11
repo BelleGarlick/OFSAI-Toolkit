@@ -1,16 +1,17 @@
 import math
 
+import numpy as np
+
 from fsai.car.physics.advanced import CarPhysics
-from fsai.objects.point import Point
 
 
 class Car:
     def __init__(
             self,
-            pos=Point(0, 0),
+            pos=np.array([0, 0]),
             heading=0,
     ):
-        self.pos: Point = pos
+        self.pos: np.ndarray = pos
         self.heading = heading
         self.physics = CarPhysics(self)
 
