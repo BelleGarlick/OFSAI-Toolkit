@@ -34,12 +34,12 @@ class CarPhysics:
         self.weight_transfer = 0.2
         self.gravity = 9.81
         self.air_resist = 2.5
-        self.roll_resist = 5
-        self.engine_force = 12000
+        self.roll_resist = 4
+        self.engine_force = 10000
         self.brake_force = 14000
         self.inertia_scale = 1
-        self.corner_stiffness_front = 5
-        self.corner_stiffness_rear = 5.2
+        self.corner_stiffness_front = 4
+        self.corner_stiffness_rear = 4.2
         self.tire_grip = 5
         self.lock_grip = 0.7
         self.e_brake_force = 2000
@@ -112,8 +112,8 @@ class CarPhysics:
         angular_torque = (friction_force_front_cy + traction_force_cy) * self.car.cg_to_front_axle - friction_force_rear_cy * self.car.cg_to_rear_axle
 
         # Sim gets unstable at very slow speeds, so just stop the car
-        if abs(self.absVel) < 0.5 and not throttle:
-            self.velocity.x, self.velocity.y, self.absVel = 0, 0, 0
+        if abs(self.absVel) < 0.05 and not throttle:
+            self.velocity[0], self.velocity[1], self.absVel = 0, 0, 0
             angular_torque, self.yaw_rate = 0, 0
 
         angular_accel = angular_torque / self.__get_inertia()

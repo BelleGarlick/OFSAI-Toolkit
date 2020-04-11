@@ -71,7 +71,7 @@ def render_area(
         points: List[Tuple[Tuple[int, int, int], float, List[Point]]] = None,
         lines: List[Tuple[Tuple[int, int, int], float, List[Line]]] = None,
         cars: List[Car] = None,
-        background: int = 255
+        background: int = (0, 0, 0)
 ):
     if cars is None: cars = []
     if points is None: points = []
@@ -148,12 +148,12 @@ def render_car(image, car: Car, scale, resolution, rotation, camera_pos, x_offse
         point.rotate_around(car.pos, car.heading)
     for point in front_left_tire_points:
         point.rotate_around(car.pos, car.heading)
-        point.rotate_around(Point(car.pos.x + car.cg_to_front_axle, car.pos.y - (car.width / 2) - (car.wheel_width / 2)), car.steer * car.max_steer)
+        point.rotate_around(Point(car.pos.x + car.cg_to_front_axle, car.pos.y + (car.width / 2) + (car.wheel_width / 2)), car.steer * car.max_steer)
     for point in front_right_tire_points:
         point.rotate_around(car.pos, car.heading)
-        point.rotate_around(Point(car.pos.x + car.cg_to_front_axle, car.pos.y + (car.width / 2) + (car.wheel_width / 2)), car.steer * car.max_steer)
+        point.rotate_around(Point(car.pos.x + car.cg_to_front_axle, car.pos.y - (car.width / 2) - (car.wheel_width / 2)), car.steer * car.max_steer)
 
-    render_polygon(image, body_points, (0, 0, 255), scale, resolution, rotation, camera_pos, x_offset, y_offset)
+    render_polygon(image, body_points, (255, 0, 0), scale, resolution, rotation, camera_pos, x_offset, y_offset)
     render_polygon(image, rear_left_tire_points, (100, 100, 100), scale, resolution, rotation, camera_pos, x_offset, y_offset)
     render_polygon(image, rear_right_tire_points, (100, 100, 100), scale, resolution, rotation, camera_pos, x_offset, y_offset)
     render_polygon(image, front_left_tire_points, (100, 100, 100), scale, resolution, rotation, camera_pos, x_offset, y_offset)
