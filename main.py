@@ -4,8 +4,7 @@ import time
 import cv2
 
 from fsai.objects.track import Track
-from fsai.path_planning.waypoints import gen_waypoints, encode
-from fsai.visualisation.draw_opencv import render, render_area
+from fsai.path_planning.waypoints import gen_waypoints
 
 if __name__ == "__main__":
     track = Track("examples/data/tracks/azure_circuit.json")
@@ -15,21 +14,23 @@ if __name__ == "__main__":
     car.pos[0] += 48
     car.pos[1] += 15
 
-    count = 50
     now = time.time()
+    count = 1000
     for i in range(count):
         waypoints = gen_waypoints(
-                car_pos=car.pos,
-                car_angle=car.heading,
-                blue_boundary=left_boundary,
-                yellow_boundary=right_boundary,
-                orange_boundary=o,
-                foresight=30,
-                spacing=1.5,
-                negative_foresight=10,
-                margin=0.2,
-                smooth=True
-    )
+            car_pos=car.pos,
+            car_angle=car.heading,
+            blue_boundary=left_boundary,
+            yellow_boundary=right_boundary,
+            orange_boundary=o,
+            foresight=10,
+            spacing=2,
+            radar_count=5,
+            radar_length=10,
+            negative_foresight=5,
+            margin=0.2,
+            smooth=True
+        )
     print((time.time() - now) / count)
     # encoding = encode(waypoints, 4)
     #

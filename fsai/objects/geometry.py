@@ -26,7 +26,7 @@ def rotate(point, angle: float = 0, around: np.ndarray = np.zeros((1, 2))):
     nx = cos * sub[0] - sin * sub[1] + around[0]
     ny = sin * sub[0] + cos * sub[1] + around[1]
 
-    return np.array([nx, ny])
+    return np.asarray([nx, ny])
 
 
 def angle_to(a: np.ndarray, b: np.ndarray):
@@ -35,6 +35,10 @@ def angle_to(a: np.ndarray, b: np.ndarray):
 
 def angle(line: np.ndarray):
     return math.atan2(line[3] - line[1], line[2] - line[0])
+
+
+def angles(lines: np.ndarray):
+    return np.arctan2(lines[:, 3] - lines[:, 1], lines[:, 2] - lines[:, 0])
 
 
 def closest_point(origin: np.ndarray, points):
@@ -71,7 +75,7 @@ def segment_intersections(segment_a, segments):
 
         if x[index] != np.nan and y[index] != np.nan and min_x <= round(
                 1000 * x[index]) / 1000 <= max_x and min_y <= round(1000 * y[index]) / 1000 <= max_y:
-            intersections.append(np.array([x[index], y[index]]))
+            intersections.append(np.asarray([x[index], y[index]]))
     return intersections
 
 

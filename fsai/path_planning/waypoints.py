@@ -1,4 +1,6 @@
 import math
+import time
+from multiprocessing.pool import Pool
 from typing import List, Tuple, Optional
 
 import numpy as np
@@ -118,8 +120,8 @@ def gen_waypoints(
 
     # apply error margin
     all_waypoints = apply_error_margin(all_waypoints, margin)
-
     # return lines: smoothed is needed
+
     return smoothify(all_waypoints, full_track) if smooth else all_waypoints
 
 
@@ -256,7 +258,7 @@ def create_waypoint_lines(
         # way point get to close then we break the loop - this is only useful for calculating the full track
         if not overlap and i > 3:
             # see if the distances are close enough to close the track
-            waypoint_center = next_waypoint.line[0:2] + ((next_waypoint.line[2:4] - next_waypoint.line[0:2]) * 0.5)
+            waypoint_center = geometry.line_center(next_waypoint.line)
             if geometry.distance(waypoint_center, initial_point) < spacing * 1.4:
                 break
 
@@ -409,7 +411,7 @@ def __create_radar_lines(
         lb = geometry.rotate(lb, current_angle, p)
 
         # create a line which is the collection of sub-lines
-        sub_lines.append((np.hstack((la, p)), np.hstack((lb, p))))
+        sub_lines.append((np.asarray([la[0], la[1], p[0], p[1]]), np.asarray([lb[0], lb[1], p[0], p[1]])))
     return sub_lines
 
 
@@ -451,22 +453,29 @@ def __get_most_perpendicular_line_to_boundary(
     # buffer the line_count so we don't need to keep calling it, adding lag
     line_count: int = len(lines)
 
+    blue_orange_boundary = np.asarray([blue_boundary[0], blue_boundary[1], orange_boundary[0], orange_boundary[1]]) if len(orange_boundary) > 0 else blue_boundary
+    yellow_orange_boundary = np.asarray([yellow_boundary[0], yellow_boundary[1], orange_boundary[0], orange_boundary[1]]) if len(orange_boundary) > 0 else yellow_boundary
+    if left_colour == BLUE_ON_LEFT:
+        left_boundary = blue_orange_boundary
+        right_boundary = yellow_orange_boundary
+    else:
+        left_boundary = yellow_orange_boundary
+        right_boundary = blue_orange_boundary
+
+    bias_value = np.asarray(range(line_count)) + 0.5
+    bias_value = bias_value / line_count * 2 - 1
+    bias_value = 1 - (np.clip(1 - abs(bias_value - bias), 0, 1) * bias_strength)
+
     # loop through each line in the list of lines to find the more perpendicular line
-    # TODO This can prolly be multi processed
+    distances = []
     for i in range(line_count):
         line = lines[i]
         # set up defaults for the waypoints, optimum 0.5 (middle) and not sticky
         optimum, sticky = 0.5, False
 
         # dependant on what colour is on left, we can swap the way we search for points
-        blue_orange_boundary = np.hstack((blue_boundary, orange_boundary)) if len(orange_boundary) > 0 else blue_boundary
-        yellow_orange_boundary = np.hstack((yellow_boundary, orange_boundary)) if len(orange_boundary) > 0 else yellow_boundary
-        if left_colour == BLUE_ON_LEFT:
-            left_intersections = geometry.segment_intersections(line[0], blue_orange_boundary)
-            right_intersections = geometry.segment_intersections(line[1], yellow_orange_boundary)
-        else:
-            left_intersections = geometry.segment_intersections(line[0], yellow_orange_boundary)
-            right_intersections = geometry.segment_intersections(line[1], blue_orange_boundary)
+        left_intersections = geometry.segment_intersections(line[0], left_boundary)
+        right_intersections = geometry.segment_intersections(line[1], right_boundary)
 
         # check the amount of intersections.
         # if a line does not intersect then we can use the end of the
@@ -490,23 +499,20 @@ def __get_most_perpendicular_line_to_boundary(
         point_a = geometry.closest_point(center_points, left_intersections)
         point_b = geometry.closest_point(center_points, right_intersections)
 
-        # calculate the distance of hte two points
-        distance = geometry.distance(point_a, point_b)
-
-        # Here we can apply the bias, explained in the method documentation. First we calculate how much bias to apply
-        # for the current angle
-        bias_angle = ((i + 0.5) / line_count * 2 - 1)
-        bias_value = max(.0, 1 - abs(bias_angle - bias))
         # we can then create a new heuristic distance which is the current distance affected by the bias
-        distance -= distance * bias_value * bias_strength
+        distances.append({
+            "line": np.asarray([point_a[0], point_a[1], point_b[0], point_b[1]]),
+            "optimum": optimum,
+            "sticky": sticky,
+            "distance": geometry.distance(point_a, point_b) * bias_value[i]
+        })
 
-        # then we can compare hte smallest line with the heuristic
-        if smallest_line is None or distance < closest_distance:
-            # bae is schmol line so we update the smallest known line
-            smallest_line = Waypoint(line=np.hstack((point_a, point_b)), optimum=optimum, sticky=sticky)
-            closest_distance = distance
+    perp_line = distances[0]
+    for i in range(1, len(distances)):
+        if distances[i]["distance"] < perp_line["distance"]:
+            perp_line = distances[i]
 
-    return smallest_line
+    return Waypoint(line=perp_line["line"], optimum=perp_line["optimum"], sticky=perp_line["sticky"])
 
 
 def __get_radar_lines_around_point(
@@ -557,7 +563,7 @@ def __get_radar_lines_around_point(
         p = geometry.rotate([origin[0] + length / 2, origin[1]], angle=initial_angle + angle_change * i, around=origin)
 
         p_adjusted = p - (p - origin) * 2
-        line = (np.hstack((p, origin)), np.hstack((p_adjusted, origin)))
+        line = (np.asarray([p[0], p[1], origin[0], origin[1]]), np.asarray([p_adjusted[0], p_adjusted[1], origin[0], origin[1]]))
         # create the line form the origin to this newly rotated point
         lines.append(line)
 
@@ -616,15 +622,18 @@ def smoothify(current_lines: List[Waypoint], full_track: bool):
     if full_track:
         index_range = range(len(current_lines))
 
+    # calculate angles
+    angles = geometry.angles(np.asarray([line.line for line in current_lines]))
+
     # loop through each index in the range and and calculate a new angle for it
     for i in index_range:
         # create a new deep copy of the waypoint in which to mutate
         new_waypoint: Waypoint = current_lines[i].copy()
 
         # get the angle of the surrounding waypoints
-        pre = geometry.angle(current_lines[i - 1].line)
-        cur = geometry.angle(current_lines[i].line)
-        nex = geometry.angle(current_lines[(i + 1) % len(current_lines)].line)
+        pre = angles[i - 1]
+        cur = angles[i]
+        nex = angles[(i + 1) % len(current_lines)]
 
         # create a normalised vector for each angle which we wish to add, then add the vectors and get an average
         # angle from that. You must never average two angles the normal way. Average of 359 and 1 is 0, not 180...
@@ -742,7 +751,7 @@ def encode(waypoints: List[Waypoint], central_index: int):
 
         X += [[
             geometry.length(waypoints[f].line),
-            delta_line_angle(np.hstack((prev_center, current_center)), waypoints[f-1].line) + (math.pi / 2),
+            delta_line_angle(np.asarray([prev_center, current_center]), waypoints[f-1].line) + (math.pi / 2),
             delta_line_angle(waypoints[f].line, waypoints[f-1].line),
             geometry.distance(current_center, prev_center)
         ]]
@@ -752,13 +761,14 @@ def encode(waypoints: List[Waypoint], central_index: int):
     ]] + X
 
     for n in range(central_index - 1, -1, -1):
-        current_center = geometry.line_center(np.array([waypoints[n].line[0], waypoints[n].line[1], waypoints[n].line[2], waypoints[n].line[3]]))
-        prev_center = geometry.line_center(np.array([waypoints[n+1].line[2], waypoints[n+1].line[3], waypoints[n+1].line[2], waypoints[n+1].line[3]]))
+        current_center = geometry.line_center(np.asarray([waypoints[n].line[0], waypoints[n].line[1], waypoints[n].line[2], waypoints[n].line[3]]))
+        prev_center = geometry.line_center(np.asarray([waypoints[n+1].line[2], waypoints[n+1].line[3], waypoints[n+1].line[2], waypoints[n+1].line[3]]))
 
         X = [[
             geometry.length(waypoints[n].line),
-            delta_line_angle(np.hstack((prev_center, current_center)), waypoints[n+1].line) - (math.pi / 2),
+            delta_line_angle(np.asarray([prev_center[0], prev_center[1], current_center[0], current_center[1]]), waypoints[n+1].line) - (math.pi / 2),
             -(delta_line_angle(waypoints[n+1].line, waypoints[n].line)),
             geometry.distance(current_center, prev_center)
         ]] + X
     return X
+
