@@ -3,7 +3,7 @@ from typing import List, Dict, Set, Tuple
 import numpy as np
 from scipy.spatial import Delaunay
 
-from fsai.objects import geometry
+from fsai import geometry
 from fsai.objects.cone import Cone, CONE_COLOR_BIG_ORANGE, CONE_COLOR_BLUE, CONE_COLOR_YELLOW, CONE_COLOR_ORANGE
 
 

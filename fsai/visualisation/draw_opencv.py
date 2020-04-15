@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from fsai.car.car import Car
-from fsai.objects import geometry
+from fsai import geometry
 from fsai.objects.cone import Cone
 from fsai.utils.visualise_2d import calculate_translations
 

@@ -1,17 +1,13 @@
-import math
-
-import numpy as np
-
 from fsai.car.physics.advanced import CarPhysics
 
 
 class Car:
     def __init__(
             self,
-            pos=np.array([0, 0]),
+            pos=None,
             heading=0,
     ):
-        self.pos: np.ndarray = pos
+        self.pos = pos if pos is not None else [0, 0]
         self.heading = heading
         self.physics = CarPhysics(self)
 

@@ -5,7 +5,7 @@ from typing import List
 
 import numpy as np
 
-from fsai.objects import geometry
+from fsai import geometry
 from fsai.objects.track import Track
 from fsai.path_planning.waypoints import gen_waypoints, encode
 
