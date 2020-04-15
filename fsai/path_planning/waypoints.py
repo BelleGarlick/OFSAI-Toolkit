@@ -120,8 +120,8 @@ def gen_waypoints(
 
     # apply error margin
     all_waypoints = apply_error_margin(all_waypoints, margin)
-    # return lines: smoothed is needed
 
+    # return lines: smoothed is needed
     return smoothify(all_waypoints, full_track) if smooth else all_waypoints
 
 
@@ -134,8 +134,7 @@ def create_waypoint_at_pos(
         left_boundary_colour: int = BLUE_ON_LEFT,
         radar_line_count: int = 15,
         radar_line_length: float = 20,
-        radar_span: float = math.pi/2
-) -> Waypoint:
+        radar_span: float = math.pi/2) -> Waypoint:
     """
     This function will create the radar line around a given point. This is done by creating a list of waypoints
     rotating around hte point given such that each line passes through the origin point. Then each line is compared
@@ -446,15 +445,10 @@ def __get_most_perpendicular_line_to_boundary(
     :param left_colour: enum stating whether the blue or yellow is on the left of the track.
     :return: The most suitable waypoint for the given parameters
     """
-    # store the two variables used to find the shortest line
-    smallest_line: Optional[Waypoint] = None
-    closest_distance: float = math.inf
-
     # buffer the line_count so we don't need to keep calling it, adding lag
     line_count: int = len(lines)
-
-    blue_orange_boundary = np.asarray([blue_boundary[0], blue_boundary[1], orange_boundary[0], orange_boundary[1]]) if len(orange_boundary) > 0 else blue_boundary
-    yellow_orange_boundary = np.asarray([yellow_boundary[0], yellow_boundary[1], orange_boundary[0], orange_boundary[1]]) if len(orange_boundary) > 0 else yellow_boundary
+    blue_orange_boundary = np.vstack([blue_boundary, orange_boundary]) if len(orange_boundary) > 0 else blue_boundary
+    yellow_orange_boundary = np.vstack([yellow_boundary, orange_boundary]) if len(orange_boundary) > 0 else yellow_boundary
     if left_colour == BLUE_ON_LEFT:
         left_boundary = blue_orange_boundary
         right_boundary = yellow_orange_boundary
@@ -592,9 +586,10 @@ def apply_error_margin(waypoints: List[Waypoint], margin: float) -> List[Waypoin
         # This is to prevent the waypoint from becoming so negative that it flips it self.
         altered_margin = min(geometry.length(waypoint.line) / 2 - 0.01, margin)
         normalised_point = geometry.normalise(waypoint.line)  # calculate normalised vector
-        normalised_point = normalised_point * altered_margin  # multiply the vector by the length of the margin
-        waypoint.line[0:2] += normalised_point  # apply vector to line
-        waypoint.line[2:4] -= normalised_point  # apply vector to the line
+        if normalised_point is not None:
+            normalised_point = normalised_point * altered_margin  # multiply the vector by the length of the margin
+            waypoint.line[0:2] += normalised_point  # apply vector to line
+            waypoint.line[2:4] -= normalised_point  # apply vector to the line
 
     # return the shortened waypoints.
     return waypoints
@@ -751,7 +746,7 @@ def encode(waypoints: List[Waypoint], central_index: int):
 
         X += [[
             geometry.length(waypoints[f].line),
-            delta_line_angle(np.asarray([prev_center, current_center]), waypoints[f-1].line) + (math.pi / 2),
+            delta_line_angle(np.asarray([prev_center[0], prev_center[1], current_center[0], current_center[1]]), waypoints[f-1].line) + (math.pi / 2),
             delta_line_angle(waypoints[f].line, waypoints[f-1].line),
             geometry.distance(current_center, prev_center)
         ]]
@@ -771,4 +766,5 @@ def encode(waypoints: List[Waypoint], central_index: int):
             geometry.distance(current_center, prev_center)
         ]] + X
     return X
+
 

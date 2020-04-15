@@ -43,9 +43,11 @@ class CarPhysics:
         self.tire_grip = 5
         self.lock_grip = 0.7
         self.e_brake_force = 2000
+
+        self.distance_travelled = 0
+        self.distances_travelled = []
         
     def update(self, dt):
-
         self.do_physics(dt)
         
     def do_physics(self, dt: float):
@@ -107,6 +109,9 @@ class CarPhysics:
         self.velocity[1] += self.accel[1] * dt
 
         self.absVel = math.hypot(self.velocity[0], self.velocity[1])
+        self.distance_travelled += self.absVel * dt
+        self.distances_travelled += [self.absVel * dt]
+        self.distances_travelled = self.distances_travelled[-100:]
 
         # calculate rotational forces
         angular_torque = (friction_force_front_cy + traction_force_cy) * self.car.cg_to_front_axle - friction_force_rear_cy * self.car.cg_to_rear_axle
@@ -122,8 +127,8 @@ class CarPhysics:
         self.car.heading += self.yaw_rate * dt
 
         # finally we can update position
-        self.car.pos.x += self.velocity[0] * dt
-        self.car.pos.y += self.velocity[1] * dt
+        self.car.pos[0] += self.velocity[0] * dt
+        self.car.pos[1] += self.velocity[1] * dt
 
     def current_speed_mph(self):
         return self.absVel * 2.23694
@@ -142,8 +147,6 @@ class CarPhysics:
 
     def __get_axle_weight_ratios(self):
         wheel_base = self.__get_wheel_base()
-        # front_ratio = self.car.cg_to_front_axle / wheel_base
-        # rear_ratio = self.car.cg_to_rear_axle / wheel_base
         front_ratio = self.car.cg_to_rear_axle / wheel_base
         rear_ratio = self.car.cg_to_front_axle / wheel_base
         return front_ratio, rear_ratio

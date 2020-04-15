@@ -92,7 +92,6 @@ def line_center(line: np.ndarray):
     return a + (b - a) * 0.5
 
 
-
 def normalise(line: np.ndarray) -> np.ndarray:
     normalisation: np.ndarray = line[2:4] - line[0:2]
     length = np.sqrt(normalisation.dot(normalisation))

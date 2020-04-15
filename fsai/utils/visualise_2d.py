@@ -39,17 +39,17 @@ def __get_image_bounds(
     cones = [] if cones is None else cones
     for cone_tuples in cones:
         for cone in cone_tuples[2]:
-            min_x = min(min_x, cone.pos.x)
-            min_y = min(min_y, cone.pos.y)
-            max_x = max(max_x, cone.pos.x)
-            max_y = max(max_y, cone.pos.y)
+            min_x = min(min_x, cone.pos[0])
+            min_y = min(min_y, cone.pos[1])
+            max_x = max(max_x, cone.pos[0])
+            max_y = max(max_y, cone.pos[1])
 
     for point_tuples in points:
         for point in point_tuples[2]:
-            min_x = min(min_x, point.x)
-            min_y = min(min_y, point.y)
-            max_x = max(max_x, point.x)
-            max_y = max(max_y, point.y)
+            min_x = min(min_x, point[0])
+            min_y = min(min_y, point[1])
+            max_x = max(max_x, point[0])
+            max_y = max(max_y, point[1])
 
     for line_tuple in lines:
         for line in line_tuple[2]:
