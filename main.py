@@ -1,11 +1,4 @@
-import math
 import time
-from typing import List
-
-import cv2
-import copy
-
-import numpy as np
 import pygame as pygame
 
 from evolutionary_learner import EvolutionarySimulation
@@ -14,7 +7,7 @@ from fsai.visualisation.draw_pygame import render
 CAR_COUNT = 10
 
 pygame.init()
-screen_size = [600, 400]
+screen_size = [1000, 700]
 screen = pygame.display.set_mode(screen_size)
 
 
@@ -31,7 +24,7 @@ while simulation_running:
 
     now = time.time()
     dt = now - last_time
-    simulation.do_step(dt/10)
+    simulation.do_step(dt/15)
 
     render(
         screen,

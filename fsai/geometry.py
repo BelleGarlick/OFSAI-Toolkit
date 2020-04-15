@@ -69,7 +69,7 @@ def segment_intersections(segment_a, segments):
         c2 = a2 * segments[index][0] + b2 * segments[index][1]
         delta = a1 * b2 - a2 * b1
 
-        if delta == 0:
+        if delta != 0:
             x = (b2 * c1 - b1 * c2) / delta
             y = (a1 * c2 - a2 * c1) / delta
 
@@ -94,7 +94,7 @@ def rotate_points(points, rotation, rotation_center):
 def line_center(line):
     a = line[0:2]
     b = line[2:4]
-    return a + (b - a) * 0.5
+    return add(a, scale(sub(b, a), 0.5))
 
 
 def normalise(line):

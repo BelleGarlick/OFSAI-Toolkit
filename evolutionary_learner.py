@@ -1,6 +1,9 @@
 import copy
 import math
-import multiprocessing as mp
+import time
+import pygame as pygame
+
+from fsai.visualisation.draw_pygame import render
 from typing import List
 
 import numpy as np
@@ -20,27 +23,27 @@ class EvolutionarySimulation:
         self.left_boundary, self.right_boundary, self.o = track.get_boundary()
 
         self.step_size = 0.5
-        self.current_weights = None
-        self.current_weights = self.gen_random_weights()
+        self.best_weights = self.gen_random_weights(new=True)
+        self.best_weights_distance = 0
         self.cars = self.gen_cars(car_count)
         self.car_count = car_count
 
         self.episode_length = 0
         self.episode_number = 0
 
-    def gen_random_weights(self):
+    def gen_random_weights(self, new=False):
         input_size = self.input_size
         layers: List[np.ndarray] = []
 
         for layer_index in range(len(self.layer_sizes)):
             layer_size = self.layer_sizes[layer_index]
-            if self.current_weights is None:
+            if new:
                 layers.append(
                     (np.random.rand(input_size + 1, layer_size) * 2 - 1)
                 ),
             else:
                 layers.append(
-                    self.current_weights[layer_index] + (np.random.rand(input_size + 1, layer_size) * 2 - 1) * self.step_size
+                    self.best_weights[layer_index] + (np.random.rand(input_size + 1, layer_size) * 2 - 1) * self.step_size
                 ),
             input_size = layer_size
         return layers
@@ -51,6 +54,7 @@ class EvolutionarySimulation:
             car.alive = True
             car.weights = self.gen_random_weights()
         self.step_size *= 0.95
+        self.step_size = max(self.step_size, 0.05)
         return cars
 
     def feed(self, input, weights):
@@ -63,16 +67,11 @@ class EvolutionarySimulation:
 
     def do_step(self, time_delta):
         self.episode_length += time_delta
-        all_dead = True
 
         alive_cars = [car for car in self.cars if car.alive]
-        if len(alive_cars) > 0:
-            with mp.Pool(processes=len(alive_cars)) as pool:
-                encodings = (pool.map(self.get_waypoint_encoding_for_car, alive_cars))
-
         for car_index in range(len(alive_cars)):
             car = alive_cars[car_index]
-            encoding = encodings[car_index]
+            encoding = self.get_waypoint_encoding_for_car(car)
             output = self.feed(encoding, car.weights)
             car.steer = output[0] * 2 - 1
             car.throttle = output[1]
@@ -90,7 +89,9 @@ class EvolutionarySimulation:
                     furthest = car
 
             print("Episode {} Complete in {}s with best distance: {}".format(self.episode_number, self.episode_length, furthest.physics.distance_travelled))
-            self.current_weights = furthest.weights
+            if furthest.physics.distance_travelled > self.best_weights_distance:
+                self.best_weights = furthest.weights
+                self.best_weights_distance = furthest.physics.distance_travelled
             self.episode_length = 0
             self.episode_number += 1
             self.cars = self.gen_cars(self.car_count)
@@ -138,3 +139,44 @@ class EvolutionarySimulation:
         encoding = np.array(encode(waypoints, 4))
         encoding = encoding.reshape(encoding.shape[0] * encoding.shape[1])
         return encoding
+
+
+
+
+CAR_COUNT = 10
+
+pygame.init()
+screen_size = [1000, 700]
+screen = pygame.display.set_mode(screen_size)
+
+
+simulation = EvolutionarySimulation(10, 52, [25, 3])
+simulation.gen_cars(100)
+
+simulation_running = True
+last_time = time.time()
+
+while simulation_running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            done = True
+
+    now = time.time()
+    dt = now - last_time
+    simulation.do_step(dt/20)
+
+    render(
+        screen,
+        screen_size,
+        lines=[
+            ((0, 0, 255), 2, simulation.left_boundary),
+            ((255, 255, 0), 2, simulation.right_boundary),
+            ((255, 100, 0), 2, simulation.o)
+        ],
+        cars=[car for car in simulation.cars if car.alive],
+        padding=0
+    )
+
+    pygame.display.flip()
+    last_time = now
+
