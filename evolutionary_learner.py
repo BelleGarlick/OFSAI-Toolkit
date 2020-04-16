@@ -120,6 +120,8 @@ class EvolutionarySimulation:
 
 
     def get_waypoint_encoding_for_car(self, car):
+        positive_waypoints = 12
+        negative_waypoints = 4
         waypoints = gen_waypoints(
             car_pos=car.pos,
             car_angle=car.heading,
@@ -128,7 +130,7 @@ class EvolutionarySimulation:
             orange_boundary=self.o,
             foresight=8,
             spacing=2,
-            negative_foresight=4,
+            negative_foresight=negative_waypoints,
             radar_length=12,
             radar_count=5,
             radar_span=math.pi / 1.2,
@@ -136,47 +138,50 @@ class EvolutionarySimulation:
             smooth=True
         )
 
-        encoding = np.array(encode(waypoints, 4))
+        # add inputs to the encoding
+        encoding = np.array(encode(waypoints, 4))[:,:3]
+        encoding[:,0] /= 6
         encoding = encoding.reshape(encoding.shape[0] * encoding.shape[1])
+
+        # add car angle to input
+        car_angle = car.heading + geometry.angle(waypoints[negative_waypoints].line) - math.pi/2
+        encoding = np.append(encoding, geometry.clip([car_angle / (math.pi/2)], -1, 1)[0])
         return encoding
 
 
+if __name__ == "__main__":
+    CAR_COUNT = 20
 
+    pygame.init()
+    screen_size = [1000, 700]
+    screen = pygame.display.set_mode(screen_size)
 
-CAR_COUNT = 10
+    simulation = EvolutionarySimulation(CAR_COUNT, 40, [10, 3])
 
-pygame.init()
-screen_size = [1000, 700]
-screen = pygame.display.set_mode(screen_size)
+    simulation_running = True
+    last_time = time.time()
 
+    while simulation_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
 
-simulation = EvolutionarySimulation(10, 52, [25, 3])
-simulation.gen_cars(100)
+        now = time.time()
+        dt = now - last_time
+        simulation.do_step(dt/20)
 
-simulation_running = True
-last_time = time.time()
+        render(
+            screen,
+            screen_size,
+            lines=[
+                ((0, 0, 255), 2, simulation.left_boundary),
+                ((255, 255, 0), 2, simulation.right_boundary),
+                ((255, 100, 0), 2, simulation.o)
+            ],
+            cars=[car for car in simulation.cars if car.alive],
+            padding=0
+        )
 
-while simulation_running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            done = True
-
-    now = time.time()
-    dt = now - last_time
-    simulation.do_step(dt/20)
-
-    render(
-        screen,
-        screen_size,
-        lines=[
-            ((0, 0, 255), 2, simulation.left_boundary),
-            ((255, 255, 0), 2, simulation.right_boundary),
-            ((255, 100, 0), 2, simulation.o)
-        ],
-        cars=[car for car in simulation.cars if car.alive],
-        padding=0
-    )
-
-    pygame.display.flip()
-    last_time = now
+        pygame.display.flip()
+        last_time = now
 

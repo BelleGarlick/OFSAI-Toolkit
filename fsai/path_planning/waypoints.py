@@ -118,7 +118,8 @@ def gen_waypoints(
     all_waypoints = apply_error_margin(all_waypoints, margin)
 
     # return lines: smoothed is needed
-    return smoothify(all_waypoints, full_track) if smooth else all_waypoints
+    smoothed = smoothify(all_waypoints, full_track) if smooth else all_waypoints
+    return smoothed
 
 
 def create_waypoint_at_pos(
@@ -218,14 +219,13 @@ def create_waypoint_lines(
     """
     # store all the waypoints generated here
     waypoint_lines: List[Waypoint] = []
-
     # store a buffer of the current point and angle to generate the next waypoint for
     last_point = initial_point
     last_angle: float = initial_angle
 
     for i in range(count):
         # calculate the next waypoint position given some parameters
-        next_waypoint: Waypoint = get_next_waypoint(
+        next_waypoint = get_next_waypoint(
             starting_point=last_point,
             direction=last_angle,
             blue_boundary=blue_boundary,
@@ -256,7 +256,6 @@ def create_waypoint_lines(
             waypoint_center = geometry.line_center(next_waypoint.line)
             if geometry.distance(waypoint_center, initial_point) < spacing * 1.4:
                 break
-
     return waypoint_lines
 
 
@@ -332,7 +331,6 @@ def get_next_waypoint(
         bias_strength=bias_strength,
         left_colour=left_boundary_colour
     )
-
     return smallest_line
 
 
@@ -590,7 +588,7 @@ def apply_error_margin(waypoints: List[Waypoint], margin: float) -> List[Waypoin
         if normalised_point is not None:
             normalised_point = geometry.scale(normalised_point, altered_margin)  # multiply the vector by the length of the margin
             waypoint.line[0:2] = geometry.add(waypoint.line[0:2], normalised_point)  # apply vector to line
-            waypoint.line[2:4] = geometry.sub(waypoint.line[0:2], normalised_point)  # apply vector to line
+            waypoint.line[2:4] = geometry.sub(waypoint.line[2:4], normalised_point)  # apply vector to line
 
     # return the shortened waypoints.
     return waypoints

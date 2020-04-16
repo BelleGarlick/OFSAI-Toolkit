@@ -1,43 +1,53 @@
+import math
 import time
-import pygame as pygame
 
-from evolutionary_learner import EvolutionarySimulation
-from fsai.visualisation.draw_pygame import render
+import cv2
 
-CAR_COUNT = 10
+from fsai.objects.track import Track
+from fsai.path_planning.waypoint import Waypoint
+from fsai.path_planning.waypoints import gen_waypoints, encode
+from fsai.visualisation.draw_opencv import render
+from fsai import geometry
 
-pygame.init()
-screen_size = [1000, 700]
-screen = pygame.display.set_mode(screen_size)
+if __name__ == "__main__":
+    # track = Track("examples/data/tracks/azure_circuit.json")
+    # left_boundary, right_boundary, o = track.get_boundary()
+    # initial_car = track.cars[0]
+    # initial_car.heading -= 0.5
+    #
+    # waypoints = gen_waypoints(
+    #     car_pos=track.cars[0].pos,
+    #     car_angle=track.cars[0].heading,
+    #     blue_boundary=left_boundary,
+    #     yellow_boundary=right_boundary,
+    #     orange_boundary=o,
+    #     foresight=10,
+    #     spacing=1.5,
+    #     negative_foresight=10,
+    #     radar_length=12,
+    #     radar_count=13,
+    #     radar_span=math.pi / 1.2,
+    #     margin=0,
+    #     smooth=True
+    # )
+    # encoding = encode(waypoints, 10)
+    # print(encoding)
 
 
-simulation = EvolutionarySimulation(10, 52, [25, 3])
-simulation.gen_cars(100)
+    waypoint = Waypoint(line=[0, 0, 2, -8])
+    p = waypoint.find_optimum_from_point([8, -4])
 
-simulation_running = True
-last_time = time.time()
-
-while simulation_running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            done = True
-
-    now = time.time()
-    dt = now - last_time
-    simulation.do_step(dt/15)
-
-    render(
-        screen,
-        screen_size,
+    image = render(
+        [1000, 1000],
         lines=[
-            ((0, 0, 255), 2, simulation.left_boundary),
-            ((255, 255, 0), 2, simulation.right_boundary),
-            ((255, 100, 0), 2, simulation.o)
+            ((0, 255, 0), 2, [waypoint.line]),
         ],
-        cars=[car for car in simulation.cars if car.alive],
-        padding=0
+        points=[
+            ((0, 255, 0), 4, [p, [8, -4]])
+        ],
+        padding=10,
+        background=0
     )
-
-    pygame.display.flip()
-    last_time = now
+    cv2.imshow("", image/255)
+    cv2.waitKey(0)
 
