@@ -1,37 +1,34 @@
-import math
-from typing import List
-
+from libc.math cimport atan2, round, sin, cos, sqrt
+import cython
 
 cpdef float distance(a, b):
-    cdef float[2] d = sub(a, b)
-    return math.sqrt(d[0]*d[0] + d[1]*d[1])
+    return cdistance(a[0], a[1], b[0], b[1])
 
 
 cpdef distances(point, points):
-    return [distance(point, p) for p in points]
+    return [cdistance(point[0], point[1], p[0], p[1]) for p in points]
 
 
 cpdef float length(line):
-    return distance(line[0:2], line[2:4])
+    return cdistance(line[0], line[1], line[2], line[3])
 
 
-cpdef rotate(point, float angle = 0, around: List[float] = None):
-    cdef float cos = math.cos(angle)
-    cdef float sin = math.sin(angle)
+cpdef rotate(point, float angle, around):
+    cdef float cos_f = cos(angle)
+    cdef float sin_f = sin(angle)
     cdef float[2] dif = sub(point, around)
 
-    cdef float nx = cos * dif[0] - sin * dif[1] + around[0]
-    cdef float ny = sin * dif[0] + cos * dif[1] + around[1]
-
+    cdef float nx = cos_f * dif[0] - sin_f * dif[1] + around[0]
+    cdef float ny = sin_f * dif[0] + cos_f * dif[1] + around[1]
     return [nx, ny]
 
 
 cpdef float angle_to(a, b):
-    return math.atan2(b[1] - a[1], b[0] - a[0])
+    return atan2(b[1] - a[1], b[0] - a[0])
 
 
 cpdef float angle(line):
-    return math.atan2(line[3] - line[1], line[2] - line[0])
+    return atan2(line[3] - line[1], line[2] - line[0])
 
 
 cpdef angles(lines):
@@ -45,6 +42,7 @@ cpdef closest_point(origin, points):
     cdef float[2] nearest_point = points[0]
     cdef float closest_distance = distance(origin, points[0])
     cdef float dist = 0
+    cdef size_t i
     for i in range(1, len(points)):
         dist = distance(origin, points[i])
         if dist < closest_distance:
@@ -52,32 +50,40 @@ cpdef closest_point(origin, points):
     return nearest_point
 
 
-cpdef segment_intersections(segment_a, segments):
-    cdef float min_x_seg = cmin(segment_a[0], segment_a[2])
-    cdef float min_y_seg = cmin(segment_a[1], segment_a[3])
-    cdef float max_x_seg = cmax(segment_a[0], segment_a[2])
-    cdef float max_y_seg = cmax(segment_a[1], segment_a[3])
+@cython.cdivision(True)
+cpdef segment_intersections(line, segments):
+    cdef float lin_0 = line[0]
+    cdef float lin_1 = line[1]
+    cdef float lin_2 = line[2]
+    cdef float lin_3 = line[3]
+    cdef float min_x_seg = cmin(lin_0, lin_2)
+    cdef float min_y_seg = cmin(lin_1, lin_3)
+    cdef float max_x_seg = cmax(lin_0, lin_2)
+    cdef float max_y_seg = cmax(lin_1, lin_3)
 
     # convert fixed lines into y=mx+c ordinates
-    cdef float a1 = segment_a[3] - segment_a[1]
-    cdef float b1 = segment_a[0] - segment_a[2]
-    cdef float c1 = a1 * segment_a[0] + b1 * segment_a[1]
+    cdef float a1 = lin_3 - lin_1
+    cdef float b1 = lin_0 - lin_2
+    cdef float c1 = a1 * lin_0 + b1 * lin_1
 
     intersections = []
-    cdef float a2 = 0
-    cdef float b2 = 0
-    cdef float c2 = 0
+    cdef float a2, b2, c2
     cdef float delta = 0
-    cdef float x = 0
-    cdef float y = 0
-    cdef float min_x = 0
-    cdef float min_y = 0
-    cdef float max_x = 0
-    cdef float max_y = 0
+    cdef float x, y
+    cdef float min_x, min_y, max_x, max_y
+    cdef size_t index
+    cdef float seg_0, seg_1, seg_2, seg_3
+    cdef float precision = 1000
     for index in range(len(segments)):
-        a2 = segments[index][3] - segments[index][1]
-        b2 = segments[index][0] - segments[index][2]
-        c2 = a2 * segments[index][0] + b2 * segments[index][1]
+        seg_i = segments[index]
+        seg_0 = seg_i[0]
+        seg_1 = seg_i[1]
+        seg_2 = seg_i[2]
+        seg_3 = seg_i[3]
+
+        a2 = seg_3 - seg_1
+        b2 = seg_0 - seg_2
+        c2 = a2 * seg_0 + b2 * seg_1
         delta = a1 * b2 - a2 * b1
 
         if delta != 0:
@@ -85,20 +91,22 @@ cpdef segment_intersections(segment_a, segments):
             y = (a1 * c2 - a2 * c1) / delta
 
             # check the point exists within the
-            min_x = round(1000 * cmax(cmin(segments[index][0], segments[index][2]), min_x_seg))
-            min_y = round(1000 * cmax(cmin(segments[index][1], segments[index][3]), min_y_seg))
-            max_x = round(1000 * cmin(cmax(segments[index][0], segments[index][2]), max_x_seg))
-            max_y = round(1000 * cmin(cmax(segments[index][1], segments[index][3]), max_y_seg))
+            min_x = round(precision * cmax(cmin(seg_0, seg_2), min_x_seg))
+            min_y = round(precision * cmax(cmin(seg_1, seg_3), min_y_seg))
+            max_x = round(precision * cmin(cmax(seg_0, seg_2), max_x_seg))
+            max_y = round(precision * cmin(cmax(seg_1, seg_3), max_y_seg))
 
-            if min_x <= round(1000 * x) <= max_x and min_y <= round(1000 * y) <= max_y:
+            if min_x <= round(precision * x) <= max_x and min_y <= round(precision * y) <= max_y:
                 intersections.append([x, y])
     return intersections
 
 
-cpdef rotate_points(points, rotation, rotation_center):
+cpdef rotate_points(points, float rotation, rotation_center):
     rotated_points = []
-    for point in points:
-        rotated_points.append(rotate(point, rotation, rotation_center))
+
+    cdef size_t p
+    for p in range(len(points)):
+        rotated_points.append(rotate(points[p], rotation, rotation_center))
     return rotated_points
 
 
@@ -108,6 +116,7 @@ cpdef line_center(line):
     return add(a, scale(sub(b, a), 0.5))
 
 
+@cython.cdivision(True)
 cpdef normalise(line):
     cdef float[2] normalisation = sub(line[2:4], line[0:2])
     cdef float line_length = length(line)
@@ -118,7 +127,7 @@ cpdef normalise(line):
     return normalisation
 
 
-cpdef clip(values: List[float], float min_val, float max_val):
+cpdef clip(values, float min_val, float max_val):
     clipped_values = []
     for v in values:
         clipped_values.append(cmin(cmax(v, min_val), max_val))
@@ -137,15 +146,40 @@ cpdef add(point_a, point_b):
     return [point_a[0] + point_b[0], point_a[1] + point_b[1]]
 
 
-cpdef cmin(float a, float b):
+cpdef filter_lines_by_distance(point, float distance, lines):
+    filtered_lines = []
+    cdef float px = point[0]
+    cdef float py = point[1]
+
+    cdef size_t line_index
+    cdef float lax, lay, lbx, lby
+    for line_index in range(len(lines)):
+        l = lines[line_index]
+        lax = l[0]
+        lay = l[1]
+        lbx = l[2]
+        lby = l[3]
+        if cdistance(px, py, lax, lay) < distance or cdistance(px, py, lbx, lby) < distance:
+            filtered_lines.append(lines[line_index])
+    return filtered_lines
+
+
+
+cdef float cmin(float a, float b):
     if a < b:
         return a
     else:
         return b
 
 
-cpdef cmax(float a, float b):
+cdef float cmax(float a, float b):
     if a > b:
         return a
     else:
         return b
+
+
+cdef float cdistance(float a1, float a2, float b1, float b2):
+    cdef float d0 = a1 - b1
+    cdef float d1 = a2 - b2
+    return sqrt(d0*d0 + d1*d1)

@@ -8,3 +8,7 @@
 *checkpoints*
 data/*
 *.idea*
+*.so
+*.o
+*.c
+

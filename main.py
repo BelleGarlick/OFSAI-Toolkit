@@ -34,16 +34,14 @@ if __name__ == "__main__":
     # print(encoding)
 
 
-    waypoint = Waypoint(line=[0, 0, 2, -8])
-    p = waypoint.find_optimum_from_point([8, -4])
+    waypoint = Waypoint(line=[0, 0, 0, 16])
+    p = waypoint.find_optimum_from_point([8, 2])
+    print(p)
 
     image = render(
         [1000, 1000],
         lines=[
             ((0, 255, 0), 2, [waypoint.line]),
-        ],
-        points=[
-            ((0, 255, 0), 4, [p, [8, -4]])
         ],
         padding=10,
         background=0

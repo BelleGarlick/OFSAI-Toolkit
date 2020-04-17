@@ -108,6 +108,7 @@ def gen_waypoints(
         radar_angle_span=radar_span,
         left_boundary_colour=left_boundary_colour
     )
+
     # way points should be reverse as they are created from the origin going outwards,
     # but we want them in order directional order, so we reverse them here
     reversed_lines.reverse()
@@ -153,9 +154,9 @@ def create_waypoint_at_pos(
     # computation time.
     radar_line_radius = radar_line_length / 2
 
-    blue_lines = [line for line in blue_boundary if geometry.distance(point, line[0:2]) < radar_line_radius or geometry.distance(point, line[2:4]) < radar_line_radius]
-    yellow_lines = [line for line in yellow_boundary if geometry.distance(point, line[0:2]) < radar_line_radius or geometry.distance(point, line[2:4]) < radar_line_radius]
-    orange_lines = [line for line in orange_boundary if geometry.distance(point, line[0:2]) < radar_line_radius or geometry.distance(point, line[2:4]) < radar_line_radius]
+    blue_lines = geometry.filter_lines_by_distance(point, radar_line_radius, blue_boundary)
+    yellow_lines = geometry.filter_lines_by_distance(point, radar_line_radius, yellow_boundary)
+    orange_lines = geometry.filter_lines_by_distance(point, radar_line_radius, orange_boundary)
 
     # Create a list of radar lines that pass through the origin point
     lines: List[Tuple[List[float], List[float]]] = __get_radar_lines_around_point(
@@ -256,6 +257,7 @@ def create_waypoint_lines(
             waypoint_center = geometry.line_center(next_waypoint.line)
             if geometry.distance(waypoint_center, initial_point) < spacing * 1.4:
                 break
+
     return waypoint_lines
 
 
@@ -306,9 +308,9 @@ def get_next_waypoint(
     distance = (spacing**2 + (max_length / 2)**2) ** (1/2)
 
     # loop through blue lines finding potential intersections
-    blue_lines = [line for line in blue_boundary if geometry.distance(starting_point, line[0:2]) < max_length or geometry.distance(starting_point, line[2:4]) < max_length]
-    yellow_lines = [line for line in yellow_boundary if geometry.distance(starting_point, line[0:2]) < max_length or geometry.distance(starting_point, line[2:4]) < max_length]
-    orange_lines = [line for line in orange_boundary if geometry.distance(starting_point, line[0:2]) < max_length or geometry.distance(starting_point, line[2:4]) < max_length]
+    blue_lines = geometry.filter_lines_by_distance(starting_point, distance, blue_boundary)
+    yellow_lines = geometry.filter_lines_by_distance(starting_point, distance, yellow_boundary)
+    orange_lines = geometry.filter_lines_by_distance(starting_point, distance, orange_boundary)
 
     # create the radar lines, which are the plausible waypoint lines that the could be the ideal waypoint line
     radar_lines = __create_radar_lines(
