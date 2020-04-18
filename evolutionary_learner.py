@@ -21,10 +21,10 @@ class EvolutionarySimulation:
         track = Track("examples/data/tracks/imola.json")
         self.initial_car = track.cars[0]
 
-        self.right_boundary, self.left_boundary, self.o = track.get_boundary()
+        self.left_boundary, self.right_boundary, self.o = track.get_boundary()
         self.all_boundary = np.vstack((self.right_boundary, self.left_boundary, self.o))
 
-        self.step_size = 0.1
+        self.step_size = 0.04
         self.best_weights = self.gen_random_weights(new=True)
         self.best_weights_distance = 0
         self.cars = self.gen_cars(car_count)
@@ -80,11 +80,11 @@ class EvolutionarySimulation:
             encoding = self.get_waypoint_encoding_for_car(car)
             b = time.time()
             output = self.feed(encoding, car.weights)
-            car.steer = output[0] - output[1]
-            car.throttle = output[2]
-            car.brake = output[3]
-            c =  time.time()
-            car.physics.do_physics(time_delta)
+            car.steer = output[0] * 2 - 1
+            car.throttle = output[1]
+            car.brake = output[2]
+            c = time.time()
+            car.physics.update(time_delta)
             d = time.time()
             if self.has_intersected(car) or (
                     sum(car.physics.distances_travelled) < 10 and self.episode_length > 10):
@@ -137,7 +137,7 @@ class EvolutionarySimulation:
 
     def get_waypoint_encoding_for_car(self, car):
         positive_waypoints = 12
-        negative_waypoints = 4
+        negative_waypoints = 0
         waypoints = gen_waypoints(
             car_pos=car.pos,
             car_angle=car.heading,
@@ -155,10 +155,8 @@ class EvolutionarySimulation:
         )
 
         # add inputs to the encoding
-        encoding = np.array(encode(waypoints, 4))[:,:3]
+        encoding = np.array(encode(waypoints, negative_waypoints))[:,:3]
         encoding[:,0] /= 6
-        encoding[:,1] /= math.pi/2
-        encoding[:,2] /= math.pi/2
         encoding = encoding.reshape(encoding.shape[0] * encoding.shape[1])
 
         # add car angle to input
@@ -178,7 +176,7 @@ if __name__ == "__main__":
     screen_size = [1000, 700]
     screen = pygame.display.set_mode(screen_size)
 
-    simulation = EvolutionarySimulation(CAR_COUNT, 53, [20, 12, 8, 4])
+    simulation = EvolutionarySimulation(CAR_COUNT, 41, [25, 3])
 
     simulation_running = True
     last_time = time.time()
@@ -190,7 +188,7 @@ if __name__ == "__main__":
 
         now = time.time()
         dt = now - last_time
-        simulation.do_step(dt / 3)
+        simulation.do_step(dt/3)
 
         render(
             screen,

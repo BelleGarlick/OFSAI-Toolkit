@@ -12,14 +12,11 @@ from fsai import geometry
 negative_waypoints = 1
 
 if __name__ == "__main__":
-    track = Track("examples/data/tracks/azure_circuit.json")
+    track = Track("examples/data/tracks/imola.json")
     left_boundary, right_boundary, o = track.get_boundary()
     initial_car = track.cars[0]
-    initial_car.pos[0] += 20
-    initial_car.pos[1] -= 3
-    initial_car.heading -= 0.1
 
-    waypoints, l = gen_waypoints(
+    waypoints = gen_waypoints(
         car_pos=track.cars[0].pos,
         car_angle=track.cars[0].heading,
         blue_boundary=left_boundary,
@@ -34,6 +31,7 @@ if __name__ == "__main__":
         margin=0,
         smooth=True
     )
+
     encoding = encode(waypoints, negative_waypoints)
 
 
@@ -50,13 +48,15 @@ if __name__ == "__main__":
     points = []
     for i in range(negative_waypoints + 1, len(encoding)):
         line = encoding[i]
+        line_angle = line[1]
         prev_line = encoding[i-1]
 
         line_center = [
-            current_line_center[0] + line[3] * math.cos(line[1] + current_line_angle),
-            current_line_center[1] + line[3] * math.sin(line[1] + current_line_angle)
+            current_line_center[0] + line[3] * math.cos(line_angle + current_line_angle),
+            current_line_center[1] + line[3] * math.sin(line_angle + current_line_angle)
         ]
         points += [line_center]
+        current_line_angle += line_angle
         current_line_center = line_center
 
 

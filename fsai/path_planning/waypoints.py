@@ -52,7 +52,7 @@ def gen_waypoints(
     :return: Return the list of generated waypoints
     """
     # create initial way point surrounding the car
-    initial_waypoint, lines = create_waypoint_at_pos(
+    initial_waypoint = create_waypoint_at_pos(
         car_pos,
         car_angle,
         blue_boundary,
@@ -120,7 +120,7 @@ def gen_waypoints(
 
     # return lines: smoothed is needed
     smoothed = smoothify(all_waypoints, full_track) if smooth else all_waypoints
-    return smoothed, lines
+    return smoothed
 
 
 def create_waypoint_at_pos(
@@ -177,7 +177,7 @@ def create_waypoint_at_pos(
         left_colour=left_boundary_colour
     )
 
-    return smallest_line, lines
+    return smallest_line
 
 
 def create_waypoint_lines(
@@ -558,7 +558,7 @@ def __get_radar_lines_around_point(
         # create and rotate the point the correct amount
         p = geometry.rotate([origin[0] + length / 2, origin[1]], angle=initial_angle + angle_change * i, around=origin)
 
-        p_adjusted = p - (p - origin) * 2
+        p_adjusted = geometry.sub(p, geometry.scale(geometry.sub(p, origin), 2))
         line = ([p[0], p[1], origin[0], origin[1]], [p_adjusted[0], p_adjusted[1], origin[0], origin[1]])
         # create the line form the origin to this newly rotated point
         lines.append(line)
@@ -733,7 +733,10 @@ def encode(waypoints: List[Waypoint], central_index: int):
         current_angle = geometry.angle(line_a)
         other_angle = geometry.angle(line_b)
 
-        difference = current_angle - other_angle
+        return angle_difference(current_angle, other_angle)
+
+    def angle_difference(angle_a, angle_b):
+        difference = angle_a - angle_b
 
         while difference < -math.pi:
             difference += (math.pi * 2)
@@ -741,14 +744,23 @@ def encode(waypoints: List[Waypoint], central_index: int):
             difference -= (math.pi * 2)
         return difference
 
+    central_line_angle = geometry.angle(waypoints[central_index].line)
+
+    # TODO Redo the reverse encoding delta and and the change in angle between the line and what it hsoudl be
     X = []
+    frontal_angle = central_line_angle - math.pi / 2
     for f in range(central_index + 1, len(waypoints)):
         current_center = geometry.line_center(waypoints[f].line)
         prev_center = geometry.line_center(waypoints[f - 1].line)
 
+        to_line = [prev_center[0], prev_center[1], current_center[0], current_center[1]]
+        to_line_angle = geometry.angle(to_line)
+        delta_angle = angle_difference(to_line_angle, frontal_angle)
+        frontal_angle = to_line_angle
+
         X += [[
             geometry.length(waypoints[f].line),
-            delta_line_angle([prev_center[0], prev_center[1], current_center[0], current_center[1]], waypoints[f-1].line) + (math.pi / 2),
+            delta_angle,
             delta_line_angle(waypoints[f].line, waypoints[f-1].line),
             geometry.distance(current_center, prev_center)
         ]]

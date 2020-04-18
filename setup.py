@@ -8,3 +8,4 @@ setup(
 )
 
 # python3 setup.py build_ext --inplace
+# py setup.py build_ext --inplace

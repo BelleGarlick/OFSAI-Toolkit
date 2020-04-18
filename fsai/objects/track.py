@@ -48,7 +48,7 @@ class Track:
                 for car_json in track_json["cars"]:
                     car = Car()
                     car.pos = np.asarray([car_json["pos"]["x"], car_json["pos"]["y"]])
-                    car.orientation = car_json["orientation"]
+                    car.heading = car_json["orientation"]
                     self.cars.append(car)
 
     def to_json(self):
