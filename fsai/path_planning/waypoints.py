@@ -52,7 +52,7 @@ def gen_waypoints(
     :return: Return the list of generated waypoints
     """
     # create initial way point surrounding the car
-    initial_waypoint = create_waypoint_at_pos(
+    initial_waypoint, lines = create_waypoint_at_pos(
         car_pos,
         car_angle,
         blue_boundary,
@@ -120,7 +120,7 @@ def gen_waypoints(
 
     # return lines: smoothed is needed
     smoothed = smoothify(all_waypoints, full_track) if smooth else all_waypoints
-    return smoothed
+    return smoothed, lines
 
 
 def create_waypoint_at_pos(
@@ -176,7 +176,8 @@ def create_waypoint_at_pos(
         bias_strength=0,  # since we're creating the waypoints around a point we do not want any bias
         left_colour=left_boundary_colour
     )
-    return smallest_line
+
+    return smallest_line, lines
 
 
 def create_waypoint_lines(
