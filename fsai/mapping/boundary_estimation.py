@@ -76,7 +76,7 @@ def create_boundary(
                     orange_boundaries.append([closest_yellow[1].pos[0], closest_yellow[1].pos[1], cone.pos[0], cone.pos[1]])
                     break
 
-    return np.array(blue_boundaries).reshape((len(blue_boundaries), 4)), np.array(yellow_boundaries).reshape((len(yellow_boundaries), 4)), np.array(orange_boundaries).reshape((len(orange_boundaries), 4))
+    return blue_boundaries, yellow_boundaries, orange_boundaries
 
 
 def __get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None, big_cones=None):

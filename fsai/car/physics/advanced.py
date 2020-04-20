@@ -25,6 +25,7 @@ class CarPhysics:
         self.accel: np.ndarray = np.zeros(2)  # accel in world space
         self.absVel = 0
 
+        self.vel_c: np.ndarray = np.zeros(2)
         self.accel_c: np.ndarray = np.zeros(2)
         
         self.__abs_vel: float = 0  # absolute velocity in m/s
@@ -57,8 +58,8 @@ class CarPhysics:
         steer_angle = self.car.steer * self.car.max_steer
 
         # Get velocity in local car coordinates
-        velocity_c_x = cs * self.velocity[0] + sn * self.velocity[1]
-        velocity_c_y = cs * self.velocity[1] - sn * self.velocity[0]
+        self.vel_c[0] = cs * self.velocity[0] + sn * self.velocity[1]
+        self.vel_c[1] = cs * self.velocity[1] - sn * self.velocity[0]
 
         # Weight on axles based on centre of gravity and weight shift due to forward/reverse acceleration
         axle_weight_ratio_front, axle_weight_ratio_rear = self.__get_axle_weight_ratios()
@@ -71,8 +72,8 @@ class CarPhysics:
         yaw_speed_rear = -self.car.cg_to_rear_axle * self.yaw_rate
 
         # Calculate slip angles for front and rear wheels (a.k.a. alpha)
-        slip_angle_front = math.atan2(velocity_c_y + yaw_speed_front, abs(velocity_c_x)) - sign(velocity_c_x) * steer_angle
-        slip_angle_rear = math.atan2(velocity_c_y + yaw_speed_rear,  abs(velocity_c_x))
+        slip_angle_front = math.atan2(self.vel_c[1] + yaw_speed_front, abs(self.vel_c[0])) - sign(self.vel_c[0]) * steer_angle
+        slip_angle_rear = math.atan2(self.vel_c[1] + yaw_speed_rear,  abs(self.vel_c[0]))
 
         tire_grip_front = self.tire_grip
         tire_grip_rear = self.tire_grip * (1.0 - self.ebrake * (1.0 - self.lock_grip))  # reduce rear grip when ebrake is on
@@ -86,11 +87,11 @@ class CarPhysics:
 
         # Resulting force in local car coordinates.
         # This is implemented as a RWD car only.
-        traction_force_cx = throttle - brake * sign(velocity_c_x)
+        traction_force_cx = throttle - brake * sign(self.vel_c[0])
         traction_force_cy = 0
 
-        drag_force_cx = -self.roll_resist * velocity_c_x - self.air_resist * velocity_c_x * abs(velocity_c_x)
-        drag_force_cy = -self.roll_resist * velocity_c_y - self.air_resist * velocity_c_y * abs(velocity_c_y)
+        drag_force_cx = -self.roll_resist * self.vel_c[0] - self.air_resist * self.vel_c[0] * abs(self.vel_c[0])
+        drag_force_cy = -self.roll_resist * self.vel_c[1] - self.air_resist * self.vel_c[1] * abs(self.vel_c[1])
 
         # total force in car coordinates
         total_force_cx = drag_force_cx + traction_force_cx
@@ -117,7 +118,7 @@ class CarPhysics:
         angular_torque = (friction_force_front_cy + traction_force_cy) * self.car.cg_to_front_axle - friction_force_rear_cy * self.car.cg_to_rear_axle
 
         # Sim gets unstable at very slow speeds, so just stop the car
-        if abs(self.absVel) < 0.05 and not throttle:
+        if abs(self.absVel) < 0.5 and not throttle:
             self.velocity[0], self.velocity[1], self.absVel = 0, 0, 0
             angular_torque, self.yaw_rate = 0, 0
 

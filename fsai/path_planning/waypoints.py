@@ -25,7 +25,8 @@ def gen_waypoints(
         bias: float = 0,
         bias_strength=0.2,
         left_boundary_colour: int = BLUE_ON_LEFT,
-        smooth=False
+        smooth=False,
+        force_perp_center_line=False
 ) -> List[Waypoint]:
     """
     This method is used to create waypoints around a vehicle or for a full track. First an initial set of radar lines
@@ -45,24 +46,43 @@ def gen_waypoints(
     :param radar_length: The maximum length a waypoint can be
     :param radar_count: How many radar lines should be tested upon to find the true waypoint
     :param radar_span: The total coverage the radar lines can exists between
-    :param bias: Bias hte track to head certain directions
+    :param bias: Bias the track to head certain directions
     :param bias_strength: How strongly to apply the bias
     :param left_boundary_colour: Which colour boundary is on the left [BLUE_ON_LEFT, YELLOW_ON_LEFT]
     :param smooth: If true then the waypoints will be smoothed to create a smoothing angle between waypoints
     :return: Return the list of generated waypoints
     """
     # create initial way point surrounding the car
-    initial_waypoint = create_waypoint_at_pos(
-        car_pos,
-        car_angle,
-        blue_boundary,
-        yellow_boundary,
-        orange_boundary,
-        left_boundary_colour=left_boundary_colour,
-        radar_line_count=radar_count,
-        radar_line_length=radar_length,
-        radar_span=radar_span
-    )
+    if force_perp_center_line:
+        pa = [car_pos[0], car_pos[1] - radar_length/2]
+        pb = [car_pos[0], car_pos[1] + radar_length/2]
+        pa = geometry.rotate(pa, car_angle, car_pos)
+        pb = geometry.rotate(pb, car_angle, car_pos)
+
+        initial_waypoint: Optional[Waypoint] = __get_most_perpendicular_line_to_boundary(
+            [(
+                [pa[0], pa[1], car_pos[0], car_pos[1]],
+                [pb[0], pb[1], car_pos[0], car_pos[1]]
+            )],
+            blue_boundary,
+            yellow_boundary,
+            orange_boundary,
+            bias=bias,
+            bias_strength=bias_strength,
+            left_colour=left_boundary_colour
+        )
+    else:
+        initial_waypoint = create_waypoint_at_pos(
+            car_pos,
+            car_angle,
+            blue_boundary,
+            yellow_boundary,
+            orange_boundary,
+            left_boundary_colour=left_boundary_colour,
+            radar_line_count=radar_count,
+            radar_line_length=radar_length,
+            radar_span=radar_span
+        )
     initial_point = initial_waypoint.get_optimum_point()
 
     # if full track then set the foresight really high, and negative to 0
@@ -769,13 +789,19 @@ def encode(waypoints: List[Waypoint], central_index: int):
         geometry.length(waypoints[central_index].line), 0, 0, 0
     ]] + X
 
+    negative_angle = central_line_angle + math.pi / 2
     for n in range(central_index - 1, -1, -1):
         current_center = geometry.line_center(waypoints[n].line)
         prev_center = geometry.line_center(waypoints[n + 1].line)
 
+        to_line = [prev_center[0], prev_center[1], current_center[0], current_center[1]]
+        to_line_angle = geometry.angle(to_line)
+        delta_angle = angle_difference(to_line_angle, negative_angle)
+        negative_angle = to_line_angle
+
         X = [[
             geometry.length(waypoints[n].line),
-            delta_line_angle([prev_center[0], prev_center[1], current_center[0], current_center[1]], waypoints[n+1].line) - (math.pi / 2),
+            delta_angle,
             -(delta_line_angle(waypoints[n+1].line, waypoints[n].line)),
             geometry.distance(current_center, prev_center)
         ]] + X
