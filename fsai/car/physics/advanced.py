@@ -47,11 +47,8 @@ class CarPhysics:
 
         self.distance_travelled = 0
         self.distances_travelled = []
-        
-    def update(self, dt):
-        self.do_physics(dt)
-        
-    def do_physics(self, dt: float):
+
+    def update(self, dt: float):
         # Shorthand
         sn = math.sin(self.car.heading)
         cs = math.cos(self.car.heading)
@@ -130,6 +127,8 @@ class CarPhysics:
         # finally we can update position
         self.car.pos[0] += self.velocity[0] * dt
         self.car.pos[1] += self.velocity[1] * dt
+
+        return self.absVel * dt
 
     def current_speed_mph(self):
         return self.absVel * 2.23694

@@ -11,11 +11,11 @@ from fsai.utils.visualise_2d import calculate_translations
 
 def render(
         image_size: Tuple[int, int],
-        cones: List[Tuple[Tuple[int, int, int], float, np.ndarray]] = None,
+        polygons: List[Tuple[Tuple[int, int, int], Tuple[Tuple[int, int, int], float, List[List[float]]]]] = None,
         points: List[Tuple[Tuple[int, int, int], float, np.ndarray]] = None,
         lines: List[Tuple[Tuple[int, int, int], float, List[np.ndarray]]] = None,
         cars: List[Car] = None,
-        background: int = 255,
+        background: int = 0,
         padding: int = 40
 ):
     """
@@ -31,11 +31,10 @@ def render(
     """
     if cars is None: cars = []
     if points is None: points = []
-    if cones is None: cones = []
     if lines is None: lines = []
 
     x_offset, y_offset, scale = calculate_translations(
-        cones, points, lines, image_size, padding
+        polygons, points, lines, image_size, padding
     )
 
     # x_offset, y_offset = -min_x * scale + padding, -min_y * scale + padding
@@ -44,17 +43,18 @@ def render(
 
     origin = np.asarray([0, 0])
 
+    # draw cones into the scene
+    for polygon_data in polygons if polygons is not None else []:
+        fill_colour, stroke_colour, stroke_width, polygon_list = polygon_data
+        for poly in polygon_list:
+            render_polygon(image, poly, fill_colour, scale, 1, 0, origin,
+                           x_offset, y_offset)
+
     # render lines into the scene
     for line_data in lines:
         colour, radius, line_list = line_data
         for line in line_list:
             render_line(image, line, colour, scale, 1, 0, origin, x_offset, y_offset)
-
-    # draw cones into the scene
-    for cone_data in cones:
-        colour, radius, cone_list = cone_data
-        for cone in cone_list:
-            render_point(image, cone.pos, colour, scale, 1, 0, origin, radius, x_offset, y_offset)
 
     # Render points into the scene
     for point_data in points:
@@ -74,7 +74,7 @@ def render_area(
         rotation: float,
         area: Tuple[int, int],
         resolution: int = 20,
-        cones: List[Tuple[Tuple[int, int, int], float, List[Cone]]] = None,
+        polygons: List[Tuple[Tuple[int, int, int], Tuple[Tuple[int, int, int], float, List[List[float]]]]] = None,
         points: List[Tuple[Tuple[int, int, int], float, np.ndarray]] = None,
         lines: List[Tuple[Tuple[int, int, int], float, List[np.ndarray]]] = None,
         cars: List[Car] = None,
@@ -82,7 +82,6 @@ def render_area(
 ):
     if cars is None: cars = []
     if points is None: points = []
-    if cones is None: cones = []
     if lines is None: lines = []
 
     x_offset = area[0] / 2 - camera_pos[0]
@@ -92,17 +91,18 @@ def render_area(
     image = np.zeros((area[1] * resolution, area[0] * resolution, 3))
     image.fill(background)
 
+    # draw cones into the scene
+    for polygon_data in polygons if polygons is not None else []:
+        fill_colour, stroke_colour, stroke_width, polygon_list = polygon_data
+        for poly in polygon_list:
+            render_polygon(image, poly, fill_colour, 1, resolution, rotation, camera_pos,
+                           x_offset, y_offset)
+
     # render lines into the scene
     for line_data in lines:
         colour, radius, line_list = line_data
         for line in line_list:
             render_line(image, line, colour, 1, resolution, rotation, camera_pos, x_offset, y_offset)
-
-    # draw cones into the scene
-    for cone_data in cones:
-        colour, radius, cone_list = cone_data
-        for cone in cone_list:
-            render_point(image, cone, colour, 1, resolution, rotation, camera_pos, radius, x_offset, y_offset)
 
     # Render points into the scene
     for point_data in points:

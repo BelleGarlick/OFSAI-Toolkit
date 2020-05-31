@@ -6,8 +6,8 @@ import numpy as np
 from fsai.objects.cone import Cone
 
 
-def calculate_translations(cones, points, lines, image_size, padding):
-    min_x, min_y, max_x, max_y = __get_image_bounds(cones, points, lines)
+def calculate_translations(polygons, points, lines, image_size, padding):
+    min_x, min_y, max_x, max_y = __get_image_bounds(polygons, points, lines)
     width = (max_x - min_x)
     height = (max_y - min_y)
     x_scale = (image_size[0] - (2 * padding)) / width
@@ -22,7 +22,7 @@ def calculate_translations(cones, points, lines, image_size, padding):
 
 
 def __get_image_bounds(
-        cones: List[Tuple[Tuple, float, List[Cone]]],
+        polygons: List[Tuple[Tuple, float, List[Cone]]],
         points:  List[Tuple[Tuple, float, np.ndarray]],
         lines:  List[Tuple[Tuple, float, np.ndarray]]):
     """
@@ -36,13 +36,14 @@ def __get_image_bounds(
     :return:
     """
     min_x, min_y, max_x, max_y = math.inf, math.inf, -math.inf, -math.inf
-    cones = [] if cones is None else cones
+    cones = [] if polygons is None else polygons
     for cone_tuples in cones:
-        for cone in cone_tuples[2]:
-            min_x = min(min_x, cone.pos[0])
-            min_y = min(min_y, cone.pos[1])
-            max_x = max(max_x, cone.pos[0])
-            max_y = max(max_y, cone.pos[1])
+        for triangle in cone_tuples[3]:
+            for pos in triangle:
+                min_x = min(min_x, pos[0])
+                min_y = min(min_y, pos[1])
+                max_x = max(max_x, pos[0])
+                max_y = max(max_y, pos[1])
 
     for point_tuples in points:
         for point in point_tuples[2]:

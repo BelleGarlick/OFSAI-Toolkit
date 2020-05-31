@@ -12,7 +12,7 @@ def render(
         pygame_screen,
         screen_size,
         cones: List[Tuple[Tuple[int, int, int], float, List[Cone]]] = None,
-        points: List[Tuple[Tuple[int, int, int], float, np.ndarray]] = None,
+        points: List[Tuple[Tuple[int, int, int], float, List[List[float]]]] = None,
         lines: List[Tuple[Tuple[int, int, int], float, np.ndarray]] = None,
         cars: List[Car] = None,
         background: int = 0,
@@ -45,7 +45,7 @@ def render(
     for line_data in lines:
         colour, radius, line_list = line_data
         for line in line_list:
-            render_line(pygame_screen, line, colour, scale, 1, 0, zeros, x_offset, y_offset)
+            render_line(pygame_screen, line, colour, radius, scale, 1, 0, zeros, x_offset, y_offset)
 
     # draw cones into the scene
     for cone_data in cones:
@@ -90,7 +90,7 @@ def render_area(
     for line_data in lines:
         colour, radius, line_list = line_data
         for line in line_list:
-            render_line(pygame_screen, line, colour, 1, resolution, rotation, camera_pos, x_offset, y_offset)
+            render_line(pygame_screen, line, colour, radius, 1, resolution, rotation, camera_pos, x_offset, y_offset)
 
     # draw cones into the scene
     for cone_data in ([] if cones is None else cones):
@@ -243,6 +243,7 @@ def render_line(
         pygame_screen,
         line: np.ndarray,
         colour: Tuple[int, int, int],
+        width: float,
         scale: float,
         resolution: float,
         rotation,
@@ -270,10 +271,13 @@ def render_line(
     b[0] = (b[0] * scale + x_offset) * resolution
     b[1] = (b[1] * scale + y_offset) * resolution
 
-    pygame.draw.line(
-        pygame_screen,
-        colour,
-        (int(round(a[0])), int(round(a[1]))),
-        (int(round(b[0])), int(round(b[1]))),
-        2
-    )
+    try:
+        pygame.draw.line(
+            pygame_screen,
+            colour,
+            (int(round(a[0])), int(round(a[1]))),
+            (int(round(b[0])), int(round(b[1]))),
+            width
+        )
+    except:
+        print(colour)

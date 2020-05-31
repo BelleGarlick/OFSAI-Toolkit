@@ -183,3 +183,65 @@ cdef float cdistance(float a1, float a2, float b1, float b2):
     cdef float d0 = a1 - b1
     cdef float d1 = a2 - b2
     return sqrt(d0*d0 + d1*d1)
+
+
+@cython.cdivision(True)
+cpdef circle_line_intersections(point, float radius, lines):
+    intersections = []
+
+    cdef float c_x = point[0]
+    cdef float c_y = point[1]
+
+    cdef float dx, dy, A, B, C, det, t, p_x, p_y, a_x, a_y, b_x, b_y, min_x_line, min_y_line, max_x_line, max_y_line
+
+    for line in lines:
+        a_x = line[0]
+        a_y = line[1]
+        b_x = line[2]
+        b_y = line[3]
+
+        # line = ax, ay, bx, by
+        min_x_line = cmin(a_x, b_x)
+        min_y_line = cmin(a_y, b_y)
+        max_x_line = cmax(a_x, b_x)
+        max_y_line = cmax(a_y, b_y)
+
+    #//        minXline = (Math.round(minXline * 1000d)) / 1000d;
+    #//        minYline = (Math.round(minYline * 1000d)) / 1000d;
+    #//        maxXline = (Math.round(maxXline * 1000d)) / 1000d;
+    #//        maxYline = (Math.round(maxYline * 1000d)) / 1000d;
+
+        dx = b_x - a_x
+        dy = b_y - a_y
+
+        A = dx * dx + dy * dy
+        B = 2 * (dx * (a_x - c_x) + dy * (a_y - c_y))
+        C = (a_x - c_x) * (a_x - c_x) + (a_y - c_y) * (a_y - c_y) - radius * radius
+
+        det = B * B - 4 * A * C;
+        if (A <= 0.0000001) or (det < 0):
+            # No real solutions.
+            pass
+        elif (det == 0):
+            # One solution.
+            t = -B / (2 * A)
+
+            p_x = a_x + t * dx
+            p_y = a_y + t * dy
+            if (p_x > min_x_line and p_x < max_x_line and p_y > min_y_line and p_y < max_y_line):
+                intersections.append([p_x, p_y])
+        else:
+            # Two solutions.
+            t = (float)((-B + sqrt(det)) / (2 * A));
+            p_x = a_x + t * dx
+            p_y = a_y + t * dy
+            if (p_x > min_x_line and p_x < max_x_line and p_y > min_y_line and p_y < max_y_line):
+                intersections.append([p_x, p_y])
+
+            t = (float)((-B - sqrt(det)) / (2 * A));
+            p_x = a_x + t * dx
+            p_y = a_y + t * dy
+            if (p_x > min_x_line and p_x < max_x_line and p_y > min_y_line and p_y < max_y_line):
+                intersections.append([p_x, p_y])
+
+    return intersections

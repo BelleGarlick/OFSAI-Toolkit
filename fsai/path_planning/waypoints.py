@@ -438,7 +438,8 @@ def __get_most_perpendicular_line_to_boundary(
         orange_boundary: List[List[float]],
         bias: float = 0,
         bias_strength: float = 0.2,
-        left_colour: int = BLUE_ON_LEFT
+        left_colour: int = BLUE_ON_LEFT,
+        verbose=False
 ) -> Optional[Waypoint]:
     """
     This function will return a line from a list of line that is the most perpendicular to the boundary.
@@ -478,6 +479,7 @@ def __get_most_perpendicular_line_to_boundary(
 
     # loop through each line in the list of lines to find the more perpendicular line
     distances = []
+
     for i in range(line_count):
         line = lines[i]
         # set up defaults for the waypoints, optimum 0.5 (middle) and not sticky
@@ -699,13 +701,13 @@ def decimate_waypoints(waypoints: List[Waypoint], threshold: float = 0.2, spread
     waypoint_count = len(waypoints)
     # Store a list of floats representing how much each waypoint
     # curves corresponding to the list of given waypoints.
-    waypoint_curvature = []
+    initial_waypoint_curvature = []
 
     # loop through each waypoint in range 1:len-1 and calculate the curvature
     # of that waypoint. We dont calculate either end of the waypoints because
     # each end must be added to the list of final waypoints in order to make
     # sure the generated line knows where it should heard towards.
-    for i in range(1, waypoint_count - 1):
+    for i in range(waypoint_count):
         # get the angle of the surounding lines
         p: float = geometry.angle(waypoints[i - 1].line)
         c: float = geometry.angle(waypoints[i].line)
@@ -714,11 +716,16 @@ def decimate_waypoints(waypoints: List[Waypoint], threshold: float = 0.2, spread
         # calculate the absolute change in angle bounded between -pi:pi
         a: float = abs((p - c + math.pi) % (math.pi*2) - math.pi)
         a += abs((n - c + math.pi) % (math.pi*2) - math.pi)
+        initial_waypoint_curvature.append(a)
 
+    waypoint_curvature = []
+    for i in range(0, waypoint_count):
         # alter the surrounding waypoints to apple the spread
+        spread_value = initial_waypoint_curvature[i]
         for j in range(-(spread + 1), spread + 1, 1):
             index = (i + j) % waypoint_count
-            waypoint_curvature.append(max(a, waypoint_curvature[index]))
+            spread_value = max(spread_value, initial_waypoint_curvature[index])
+        waypoint_curvature.append(spread_value)
 
     # list of the decimated waypoints to return to the users
     decimated_waypoints = []

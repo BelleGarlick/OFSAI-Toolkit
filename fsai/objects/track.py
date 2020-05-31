@@ -13,10 +13,10 @@ class Track:
         This object can be constructed with a file path to call the load_track path upon.
         :param path: Path to load a track from.
         """
-        self.blue_cones: np.ndarray = np.zeros((0, 2))
-        self.yellow_cones: np.ndarray = np.zeros((0, 2))
-        self.orange_cones: np.ndarray = np.zeros((0, 2))
-        self.big_cones: np.ndarray = np.zeros((0, 2))
+        self.blue_cones: List[Tuple[float, float]] = []
+        self.yellow_cones: List[Tuple[float, float]] = []
+        self.orange_cones: List[Tuple[float, float]] = []
+        self.big_cones: List[Tuple[float, float]] = []
 
         self.cars: List[Car] = []
 
@@ -33,16 +33,16 @@ class Track:
         with open(path) as file:
             track_json = json.loads(file.read())
             if "blue_cones" in track_json and len(track_json["blue_cones"]) > 0:
-                self.blue_cones = np.asarray([[c["x"], c["y"]] for c in track_json["blue_cones"]])
+                self.blue_cones = [[c["x"], c["y"]] for c in track_json["blue_cones"]]
 
             if "yellow_cones" in track_json and len(track_json["yellow_cones"]) > 0:
-                self.yellow_cones = np.asarray([[c["x"], c["y"]] for c in track_json["yellow_cones"]])
+                self.yellow_cones = [[c["x"], c["y"]] for c in track_json["yellow_cones"]]
 
             if "orange_cones" in track_json and len(track_json["orange_cones"]) > 0:
-                self.orange_cones = np.asarray([[c["x"], c["y"]] for c in track_json["orange_cones"]])
+                self.orange_cones = [[c["x"], c["y"]] for c in track_json["orange_cones"]]
 
             if "big_cones" in track_json and len(track_json["big_cones"]) > 0:
-                self.big_cones = np.asarray([[c["x"], c["y"]] for c in track_json["big_cones"]])
+                self.big_cones = [[c["x"], c["y"]] for c in track_json["big_cones"]]
 
             if "cars" in track_json:
                 for car_json in track_json["cars"]:

@@ -8,15 +8,15 @@ from fsai.objects.cone import Cone, CONE_COLOR_BIG_ORANGE, CONE_COLOR_BLUE, CONE
 
 
 def create_boundary(
-    blue_cones: np.ndarray = None,
-    yellow_cones: np.ndarray = None,
-    orange_cones: np.ndarray = None,
-    big_cones: np.ndarray = None
+    blue_cones: List[Tuple[float, float]] = None,
+    yellow_cones: List[Tuple[float, float]] = None,
+    orange_cones: List[Tuple[float, float]] = None,
+    big_cones: List[Tuple[float, float]] = None
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    if blue_cones is None: blue_cones = np.zeros((0, 2))
-    if yellow_cones is None: yellow_cones =  np.zeros((0, 2))
-    if orange_cones is None: orange_cones =  np.zeros((0, 2))
-    if big_cones is None: big_cones =  np.zeros((0, 2))
+    if blue_cones is None: blue_cones = []
+    if yellow_cones is None: yellow_cones =  []
+    if orange_cones is None: orange_cones =  []
+    if big_cones is None: big_cones =  []
 
     blue_cones = [Cone(pos, CONE_COLOR_BLUE) for pos in blue_cones]
     yellow_cones = [Cone(pos, CONE_COLOR_YELLOW) for pos in yellow_cones]
@@ -26,10 +26,7 @@ def create_boundary(
     big_cones = __merge_big_cones(big_cones)
 
     delaunay = __get_delaunay_triangles(
-        blue_cones,
-        yellow_cones,
-        orange_cones,
-        big_cones
+        blue_cones + yellow_cones + orange_cones + big_cones
     )
 
     blue_boundaries = []
@@ -79,10 +76,34 @@ def create_boundary(
     return blue_boundaries, yellow_boundaries, orange_boundaries
 
 
-def __get_delaunay_triangles(blue_cones=None, yellow_cones=None, orange_cones=None, big_cones=None):
+def get_delaunay_triangles(
+    blue_cones: List[Tuple[float, float]] = None,
+    yellow_cones: List[Tuple[float, float]] = None,
+    orange_cones: List[Tuple[float, float]] = None,
+    big_cones: List[Tuple[float, float]] = None
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if blue_cones is None: blue_cones = []
+    if yellow_cones is None: yellow_cones =  []
+    if orange_cones is None: orange_cones =  []
+    if big_cones is None: big_cones =  []
+
+    blue_cones = [Cone(pos, CONE_COLOR_BLUE) for pos in blue_cones]
+    yellow_cones = [Cone(pos, CONE_COLOR_YELLOW) for pos in yellow_cones]
+    orange_cones = [Cone(pos, CONE_COLOR_ORANGE) for pos in orange_cones]
+    big_cones = [Cone(pos, CONE_COLOR_BIG_ORANGE) for pos in big_cones]
+
+    big_cones = __merge_big_cones(big_cones)
+
+    delaunay = __get_delaunay_triangles(
+        blue_cones + yellow_cones + orange_cones + big_cones
+    )
+
+    return [[x[0].pos, x[1].pos, x[2].pos] for x in delaunay]
+
+
+def __get_delaunay_triangles(all_cones):
     triangles, invalid = [], []
 
-    all_cones = blue_cones + yellow_cones + orange_cones + big_cones
     delaunay_triangles = __get_delaunay_triangulations(all_cones)
     missed_cones = set(all_cones)
 

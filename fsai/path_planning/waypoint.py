@@ -10,9 +10,10 @@ class Waypoint:
         self.line: List[float] = line
         self.optimum: float = optimum
         self.sticky = sticky
+        self.throttle = 0
 
     def get_optimum_point(self):
-        return np.array(geometry.add(self.line[0:2], geometry.scale(geometry.sub(self.line[2:4], self.line[0:2]), self.optimum)))
+        return geometry.add(self.line[0:2], geometry.scale(geometry.sub(self.line[2:4], self.line[0:2]), self.optimum))
 
     def copy(self):
         return Waypoint(line=self.line.copy(), sticky=self.sticky, optimum=self.optimum)
