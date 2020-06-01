@@ -68,7 +68,6 @@ def run():
         render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
 
         for i in range(RUNS_PER_SEGMENTS):
-            set_new_car = True
             best_result, new_best, best_waypoints = genetic_test(best_result, best_waypoints, boundary, start_index, end_index, step_size, set_new_car)
             best_result["car"].physics.distance_travelled = 0
             if best_result["time"] != -1 and new_best:
@@ -266,7 +265,7 @@ def test_track(initial_car, waypoints, boundary):
             current_point = [car.pos[0], car.pos[1]]
 
             if ep_count % 20 == 0:
-                points += [current_point]
+                points += [{"pos": current_point, "thr": speed_target_waypoint.throttle}]
 
             if episode_time > 5 and sum(car.physics.distances_travelled) < 5:
                 alive = False
@@ -279,7 +278,8 @@ def test_track(initial_car, waypoints, boundary):
 
         ep_count += 1
         episode_time += DELTA_TIME
-    return lap_time, car.physics.distance_travelled, points, car if completed_lap else None
+    distance = car.physics.distance_travelled
+    return lap_time, 0 if distance < 2 else distance, points, car if completed_lap else None
 
 
 def save_best(name, best_waypoints):
@@ -364,25 +364,37 @@ def render_scene(screen, screen_size, waypoints, best_points, start_var, end_var
     for i in range(start_var, end_var):
         var_lines.append(waypoints[i].line)
 
+    render_points = [
+
+    ]
+
     render_lines = [
         ((200, 255, 200), 1, [w.line for w in waypoints]),
         ((0, 0, 200), 1, var_lines)
     ]
 
     for i in range(len(waypoints)):
-        line = waypoints[i].get_optimum_point() + (waypoints[i - 1].get_optimum_point())
+        point = waypoints[i].get_optimum_point()
         throttle = (waypoints[i].throttle + 1) / 2
 
         c = (int((1 - throttle) * 255), int((throttle) * 255), 0)
-        render_lines.append((c, 5, [line]))
+        render_points.append((c, 2, [point]))
+
+    for i in range(1, len(best_points)):
+        line = best_points[i]["pos"] + best_points[i - 1]["pos"]
+        throttle = (best_points[i]["thr"] + 1) / 2
+
+        c = (int((1 - throttle) * 255), int((throttle) * 255), 0)
+        render_lines.append((c, 4, [line]))
 
     render(
         screen,
         screen_size,
         lines=render_lines,
-        points=[
-            ((255, 0, 255), 2, best_points)
-        ],
+        # points=[
+        #     ((255, 0, 255), 2, best_points)
+        # ],
+        points=render_points,
         padding=0
     )
 
