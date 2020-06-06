@@ -14,15 +14,16 @@ from fsai.visualisation.draw_pygame import render
 from fsai.path_planning.waypoints import gen_waypoints, encode, decimate_waypoints
 from fsai import geometry
 
-selected_index = 0
+selected_index = 1
 track_names = ['autodormo_internacional_do_algarve', 'azure_circuit', 'brands_hatch', 'brno', 'cadwell_park', 'chester_field', 'circuit_de_barcelona', 'cota', 'daytona_rally', 'daytona_speedway', 'dirtfish', 'donington', 'dubai_autodrome', 'fuji', 'glencern', 'green_wood', 'hockenheimring', 'hockenheimring-classic', 'hockenheimring-rally', 'imola', 'knockhill', 'knockhill_rally', 'laguna_seca', 'lankebanen_rally', 'le_mans', 'le_mans_karting', 'loheac', 'long_beach_street', 'lydden_hill', 'merc_benz_ice', 'mojave', 'monza', 'nordschleife', 'nurburgring_gp', 'oschersleben', 'oulton_park', 'red_bull_ring', 'road_america', 'rouen_les_essarts', 'ruapuna_park', 'sampala_ice_circuit', 'silverstone', 'silverstone_class', 'snetterton', 'sonoma_raceway', 'spa', 'spa_historic', 'sportsland_sugo', 'summerton', 'watkins_glen', 'wildcrest', 'willow_springs', 'zhuhai', 'zolder']
 
 
-DELTA_TIME = 0.025
+DELTA_TIME = 0.01
 INITIAL_STEP_SIZE = 0.3
 SPREAD_DELTA = 1
 
 MAX_SEGMENTS = 30
+MIN_SEGMENTS = 10
 RUNS_PER_SEGMENTS = 100
 
 
@@ -43,7 +44,7 @@ def run():
     screen = pygame.display.set_mode(screen_size)
 
     count = 0
-    segments = 4
+    segments = MIN_SEGMENTS
     segment_index = 0
     segment_offset = False
 
@@ -78,16 +79,19 @@ def run():
                 render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
                 print("{}: {} {}".format(i, best_result["time"], best_result["dis"]))
 
-        segment_index += 1
+        if not segment_offset:
+            segment_index += 1
+        segment_offset = not segment_offset
+
         if segment_index >= segments:
             count += 1
             segment_index = 0
-            segment_offset = not segment_offset
+            # segment_offset = not segment_offset
             segments += 1
             if segments == MAX_SEGMENTS:
-                segments = 4
+                segments = MIN_SEGMENTS
             # if first_best:
-            step_size *= 0.99
+            step_size *= 0.999
             print("New Step size = {}".format(step_size))
             if count > 5:
                 # save_state(best_result, best_waypoints)
@@ -131,7 +135,7 @@ def genetic_test(best_values, waypoints: List[Waypoint], boundary, start_index, 
     initial_waypoints = copy.deepcopy(waypoints)
     best_waypoints = copy.deepcopy(waypoints)
 
-    waypoint_variations = variate_waypoint_fingerprint(initial_waypoints, step_size, start_index, end_index)
+    waypoint_variations = variate_waypoint_fingerprint(initial_waypoints, step_size, start_index, end_index, best_values["time"] != -1)
     waypoint_variate = waypoint_variations["waypoints"]
     car_result = test_waypoints(waypoint_variate, best_values["car"], boundary)
 
@@ -182,13 +186,14 @@ def get_segment_indexes(waypoints, segments=5, segment_index=0, segment_offset=F
     return start, end
 
 
-def variate_waypoint_fingerprint(waypoints, step_size, start, end):
+def variate_waypoint_fingerprint(waypoints, step_size, start, end, variate_pos):
     for i in range(start, end):
         waypoint = waypoints[i]
         waypoint.throttle += (random.random() * 2 - 1) * step_size * 2
         waypoint.throttle = max(-1, min(1, waypoint.throttle))
-        waypoint.optimum += (random.random() * 2 - 1) * step_size
-        waypoint.optimum = max(0, min(1, waypoint.throttle))
+        if variate_pos:
+            waypoint.optimum += (random.random() * 2 - 1) * step_size
+            waypoint.optimum = max(0, min(1, waypoint.throttle))
 
     return {
         "waypoints": waypoints
@@ -276,7 +281,7 @@ def test_track(initial_car, waypoints, boundary):
             car.physics.update(DELTA_TIME)
             current_point = [car.pos[0], car.pos[1]]
 
-            if ep_count % 2 == 0:
+            if ep_count % 10 == 0:
                 point = [{"pos": current_point, "thr": speed_target_waypoint.throttle}]
                 points += point
                 if lap_count == 1:
