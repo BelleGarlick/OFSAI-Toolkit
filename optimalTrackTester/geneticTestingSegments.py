@@ -19,13 +19,13 @@ track_names = ['autodormo_internacional_do_algarve', 'azure_circuit', 'brands_ha
 
 
 DELTA_TIME = 0.01
-INITIAL_STEP_SIZE = 0.3
+INITIAL_STEP_SIZE = 0.8
+STEP_DELTA = 0.96
 SPREAD_DELTA = 1
 
-MAX_SEGMENTS = 30
-MIN_SEGMENTS = 10
-RUNS_PER_SEGMENTS = 100
-
+MAX_SEGMENT_SIZE = 105
+SEGMENT_SIZE_DELTA = 10
+MIN_SEGMENT_SIZE = 5
 
 def run():
     name = track_names[selected_index]
@@ -44,11 +44,10 @@ def run():
     screen = pygame.display.set_mode(screen_size)
 
     count = 0
+    current_segment_size = MAX_SEGMENT_SIZE
     segments = MIN_SEGMENTS
     segment_index = 0
     segment_offset = False
-
-    step_size = INITIAL_STEP_SIZE
 
     best_waypoints = generate_waypoints(initial_car, left_boundary, right_boundary, orange_boundary)
 
@@ -70,6 +69,7 @@ def run():
         render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
 
         for i in range(RUNS_PER_SEGMENTS):
+            step_size = INITIAL_STEP_SIZE * (STEP_DELTA ** i)
             best_result, new_best, best_waypoints = genetic_test(best_result, best_waypoints, boundary, start_index, end_index, step_size, set_new_car)
             best_result["car"].physics.distance_travelled = 0
             if best_result["time"] != -1 and new_best:
@@ -91,8 +91,6 @@ def run():
             if segments == MAX_SEGMENTS:
                 segments = MIN_SEGMENTS
             # if first_best:
-            step_size *= 0.999
-            print("New Step size = {}".format(step_size))
             if count > 5:
                 # save_state(best_result, best_waypoints)
                 set_new_car = True
@@ -137,7 +135,7 @@ def genetic_test(best_values, waypoints: List[Waypoint], boundary, start_index, 
 
     waypoint_variations = variate_waypoint_fingerprint(initial_waypoints, step_size, start_index, end_index, best_values["time"] != -1)
     waypoint_variate = waypoint_variations["waypoints"]
-    car_result = test_waypoints(waypoint_variate, best_values["car"], boundary)
+    car_result = try_waypoints(waypoint_variate, best_values["car"], boundary)
 
     if car_result["time"] != -1:
         if not set_new_car:
@@ -200,8 +198,8 @@ def variate_waypoint_fingerprint(waypoints, step_size, start, end, variate_pos):
     }
 
 
-def test_waypoints(waypoints, initial_car, boundary):
-    time, distance, tracked_positions, car = test_track(initial_car, waypoints, boundary)
+def try_waypoints(waypoints, initial_car, boundary):
+    time, distance, tracked_positions, car = try_track(initial_car, waypoints, boundary)
 
     return {
         "time": time,
@@ -229,7 +227,7 @@ def get_best_position_throttle(position_throttle_matrix):
     return best
 
 
-def test_track(initial_car, waypoints, boundary):
+def try_track(initial_car, waypoints, boundary):
     car = copy.deepcopy(initial_car)
     lap_2_car = None
     start_lap = 0
@@ -329,7 +327,7 @@ def generate_waypoints(initial_car, left_boundary, right_boundary, orange_bounda
     )
     decimated_waypoints = []
     for i in range(len(waypoints)):
-        if i % 2 != 0:
+        if i % 2 != 3:
             decimated_waypoints.append(waypoints[i])
     # decimated_waypoints = decimate_waypoints(decimated_waypoints, threshold = 0.35, spread=1, max_gap = 4)
     # decimated_waypoints = waypoints
