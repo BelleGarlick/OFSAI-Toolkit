@@ -14,18 +14,23 @@ from fsai.visualisation.draw_pygame import render
 from fsai.path_planning.waypoints import gen_waypoints, encode, decimate_waypoints
 from fsai import geometry
 
-selected_index = 1
+selected_index = 2
 track_names = ['autodormo_internacional_do_algarve', 'azure_circuit', 'brands_hatch', 'brno', 'cadwell_park', 'chester_field', 'circuit_de_barcelona', 'cota', 'daytona_rally', 'daytona_speedway', 'dirtfish', 'donington', 'dubai_autodrome', 'fuji', 'glencern', 'green_wood', 'hockenheimring', 'hockenheimring-classic', 'hockenheimring-rally', 'imola', 'knockhill', 'knockhill_rally', 'laguna_seca', 'lankebanen_rally', 'le_mans', 'le_mans_karting', 'loheac', 'long_beach_street', 'lydden_hill', 'merc_benz_ice', 'mojave', 'monza', 'nordschleife', 'nurburgring_gp', 'oschersleben', 'oulton_park', 'red_bull_ring', 'road_america', 'rouen_les_essarts', 'ruapuna_park', 'sampala_ice_circuit', 'silverstone', 'silverstone_class', 'snetterton', 'sonoma_raceway', 'spa', 'spa_historic', 'sportsland_sugo', 'summerton', 'watkins_glen', 'wildcrest', 'willow_springs', 'zhuhai', 'zolder']
 
 
 DELTA_TIME = 0.01
-INITIAL_STEP_SIZE = 0.8
-STEP_DELTA = 0.96
+
+RUNS_PER_SEGMENTS = 50
+MAX_STEP_SIZE = 0.6
+MIN_STEP_SIZE = 0.01
+DELTA_STEP_SIZE = (MAX_STEP_SIZE - MIN_STEP_SIZE) / (RUNS_PER_SEGMENTS - 1)
+
 SPREAD_DELTA = 1
 
-MAX_SEGMENT_SIZE = 105
+MAX_SEGMENT_SIZE = 45
 SEGMENT_SIZE_DELTA = 10
 MIN_SEGMENT_SIZE = 5
+
 
 def run():
     name = track_names[selected_index]
@@ -43,11 +48,8 @@ def run():
     screen_size = [800, 400]
     screen = pygame.display.set_mode(screen_size)
 
-    count = 0
     current_segment_size = MAX_SEGMENT_SIZE
-    segments = MIN_SEGMENTS
     segment_index = 0
-    segment_offset = False
 
     best_waypoints = generate_waypoints(initial_car, left_boundary, right_boundary, orange_boundary)
 
@@ -65,11 +67,14 @@ def run():
     set_new_car = True
 
     while running:
-        start_index, end_index = get_segment_indexes(best_waypoints, segments, segment_index, segment_offset)
+        start_index, end_index = segment_index, segment_index + current_segment_size
+        if end_index >= len(best_waypoints):
+            start_index -= len(best_waypoints)
+            end_index -= len(best_waypoints)
         render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
 
         for i in range(RUNS_PER_SEGMENTS):
-            step_size = INITIAL_STEP_SIZE * (STEP_DELTA ** i)
+            step_size = MAX_STEP_SIZE - (DELTA_STEP_SIZE * i)
             best_result, new_best, best_waypoints = genetic_test(best_result, best_waypoints, boundary, start_index, end_index, step_size, set_new_car)
             best_result["car"].physics.distance_travelled = 0
             if best_result["time"] != -1 and new_best:
@@ -79,22 +84,20 @@ def run():
                 render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
                 print("{}: {} {}".format(i, best_result["time"], best_result["dis"]))
 
-        if not segment_offset:
-            segment_index += 1
-        segment_offset = not segment_offset
+        segment_index += current_segment_size // 2
 
-        if segment_index >= segments:
-            count += 1
+        if segment_index >= len(best_waypoints):
             segment_index = 0
             # segment_offset = not segment_offset
-            segments += 1
-            if segments == MAX_SEGMENTS:
-                segments = MIN_SEGMENTS
+            current_segment_size -= SEGMENT_SIZE_DELTA
+            if current_segment_size < MIN_SEGMENT_SIZE:
+                current_segment_size = MAX_SEGMENT_SIZE
+            print("Segments: {}".format(current_segment_size))
+
             # if first_best:
-            if count > 5:
+            if count >= 0:
                 # save_state(best_result, best_waypoints)
                 set_new_car = True
-                print("Should update the position of the car")
                 count = 0
 
 
@@ -167,21 +170,6 @@ def genetic_test(best_values, waypoints: List[Waypoint], boundary, start_index, 
     # best_values["pts"] = car_result["pts"]
 
     return best_values, new_best, best_waypoints
-
-
-def get_segment_indexes(waypoints, segments=5, segment_index=0, segment_offset=False):
-    segment_length = len(waypoints) / segments
-    start = (segment_index * segment_length)
-    end = ((segment_index + 1) * segment_length)
-    if segment_index >= segments - 1:
-        end = len(waypoints)
-    if segment_offset:
-        start -= segment_length // 2
-        end -= segment_length // 2
-
-    start = int(start)
-    end = int(end)
-    return start, end
 
 
 def variate_waypoint_fingerprint(waypoints, step_size, start, end, variate_pos):
