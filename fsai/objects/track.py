@@ -32,24 +32,28 @@ class Track:
         """
         with open(path) as file:
             track_json = json.loads(file.read())
-            if "blue_cones" in track_json and len(track_json["blue_cones"]) > 0:
-                self.blue_cones = [[c["x"], c["y"]] for c in track_json["blue_cones"]]
+            self.from_json(track_json)
 
-            if "yellow_cones" in track_json and len(track_json["yellow_cones"]) > 0:
-                self.yellow_cones = [[c["x"], c["y"]] for c in track_json["yellow_cones"]]
+    def from_json(self, track_json):
+        if "blue_cones" in track_json and len(track_json["blue_cones"]) > 0:
+            self.blue_cones = [[c["x"], c["y"]] for c in track_json["blue_cones"]]
 
-            if "orange_cones" in track_json and len(track_json["orange_cones"]) > 0:
-                self.orange_cones = [[c["x"], c["y"]] for c in track_json["orange_cones"]]
+        if "yellow_cones" in track_json and len(track_json["yellow_cones"]) > 0:
+            self.yellow_cones = [[c["x"], c["y"]] for c in track_json["yellow_cones"]]
 
-            if "big_cones" in track_json and len(track_json["big_cones"]) > 0:
-                self.big_cones = [[c["x"], c["y"]] for c in track_json["big_cones"]]
+        if "orange_cones" in track_json and len(track_json["orange_cones"]) > 0:
+            self.orange_cones = [[c["x"], c["y"]] for c in track_json["orange_cones"]]
 
-            if "cars" in track_json:
-                for car_json in track_json["cars"]:
-                    car = Car()
-                    car.pos = np.asarray([car_json["pos"]["x"], car_json["pos"]["y"]])
-                    car.heading = car_json["orientation"]
-                    self.cars.append(car)
+        if "big_cones" in track_json and len(track_json["big_cones"]) > 0:
+            self.big_cones = [[c["x"], c["y"]] for c in track_json["big_cones"]]
+
+        if "cars" in track_json:
+            for car_json in track_json["cars"]:
+                car = Car()
+                car.pos = np.asarray([car_json["pos"]["x"], car_json["pos"]["y"]])
+                car.heading = car_json["orientation"]
+                self.cars.append(car)
+        return self
 
     def to_json(self):
         """

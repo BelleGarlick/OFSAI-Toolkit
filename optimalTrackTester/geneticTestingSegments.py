@@ -7,6 +7,7 @@ from typing import List
 
 import numpy as np
 import pygame
+import requests
 
 from fsai.objects.track import Track
 from fsai.path_planning.waypoint import Waypoint
@@ -14,162 +15,281 @@ from fsai.visualisation.draw_pygame import render
 from fsai.path_planning.waypoints import gen_waypoints, encode, decimate_waypoints
 from fsai import geometry
 
-selected_index = 2
-track_names = ['autodormo_internacional_do_algarve', 'azure_circuit', 'brands_hatch', 'brno', 'cadwell_park', 'chester_field', 'circuit_de_barcelona', 'cota', 'daytona_rally', 'daytona_speedway', 'dirtfish', 'donington', 'dubai_autodrome', 'fuji', 'glencern', 'green_wood', 'hockenheimring', 'hockenheimring-classic', 'hockenheimring-rally', 'imola', 'knockhill', 'knockhill_rally', 'laguna_seca', 'lankebanen_rally', 'le_mans', 'le_mans_karting', 'loheac', 'long_beach_street', 'lydden_hill', 'merc_benz_ice', 'mojave', 'monza', 'nordschleife', 'nurburgring_gp', 'oschersleben', 'oulton_park', 'red_bull_ring', 'road_america', 'rouen_les_essarts', 'ruapuna_park', 'sampala_ice_circuit', 'silverstone', 'silverstone_class', 'snetterton', 'sonoma_raceway', 'spa', 'spa_historic', 'sportsland_sugo', 'summerton', 'watkins_glen', 'wildcrest', 'willow_springs', 'zhuhai', 'zolder']
-
+URL_NEW = "http://127.0.0.1/new/"
+URL_POST = "http://127.0.0.1/save/"
 
 DELTA_TIME = 0.01
 
 RUNS_PER_SEGMENTS = 50
-MAX_STEP_SIZE = 0.6
+MAX_STEP_SIZE = 0.4
 MIN_STEP_SIZE = 0.01
 DELTA_STEP_SIZE = (MAX_STEP_SIZE - MIN_STEP_SIZE) / (RUNS_PER_SEGMENTS - 1)
 
 SPREAD_DELTA = 1
 
-MAX_SEGMENT_SIZE = 16
-SEGMENT_SIZE_DELTA = 4
-MIN_SEGMENT_SIZE = 4
+MAX_SEGMENT_SIZE = 34
+SEGMENT_SIZE_DELTA = 7
+MIN_SEGMENT_SIZE = 7
 
 
-def run():
-    name = track_names[selected_index]
-    track = Track("../examples/data/tracks/{}.json".format(track_names[selected_index]))
-    initial_car = track.cars[0]
 
-    initial_car.waypoint_index = -1
-    initial_car.last_interval_update = 0
+class OptimalPathCreator:
+    def __init__(self):
+        self.name, self.uuid, self.initial_car, left_boundary, right_boundary, orange_boundary, self.intervals = get_track()
+        self.boundary = left_boundary + right_boundary + orange_boundary
 
-    left_boundary, right_boundary, orange_boundary = track.get_boundary()
-    boundary = left_boundary + right_boundary + orange_boundary
-    print(name)
+        self.waypoints = generate_waypoints(self.initial_car, left_boundary, right_boundary, orange_boundary)
+        self.waypoint_count = len(self.waypoints)
 
-    pygame.init()
-    screen_size = [800, 400]
-    screen = pygame.display.set_mode(screen_size)
+        self.best_result = {
+            "time": -1, "dis": 0, "pts": [], "car": self.initial_car
+        }
 
-    current_segment_size = MAX_SEGMENT_SIZE
-    segment_index = 0
+        # User for profiling
+        self.TOTAL_AB, self.TOTAL_BC, self.TOTAL_CD, self.TOTAL_DE, self.TOTAL_EF, self.TOTAL_FG, self.TOTAL_GH = 0, 0, 0, 0, 0, 0, 0
 
-    best_waypoints = generate_waypoints(initial_car, left_boundary, right_boundary, orange_boundary)
+    def run(self):
+        pygame.init()
+        screen_size = [800, 400]
+        screen = pygame.display.set_mode(screen_size)
 
-    running = True
-    first_best = False
+        current_segment_size = MAX_SEGMENT_SIZE
+        segment_index = 0
 
-    best_result = {
-        "time": -1,
-        "dis": 0,
-        "pts": [],
-        "car": initial_car
-    }
+        first_best = False
 
-    count = 0
-    set_new_car = True
+        count = 0
+        set_new_car = True
 
-    while running:
-        start_index, end_index = segment_index, segment_index + current_segment_size
-        if end_index >= len(best_waypoints):
-            start_index -= len(best_waypoints)
-            end_index -= len(best_waypoints)
-        render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
+        start_step_time = time.time()
 
-        for i in range(RUNS_PER_SEGMENTS):
-            step_size = MAX_STEP_SIZE - (DELTA_STEP_SIZE * i)
-            best_result, new_best, best_waypoints = genetic_test(best_result, best_waypoints, boundary, start_index, end_index, step_size, set_new_car)
-            best_result["car"].physics.distance_travelled = 0
-            if best_result["time"] != -1 and new_best:
-                set_new_car = False
+        running = True
+        interval = 0
 
-            if new_best:
-                render_scene(screen, screen_size, best_waypoints, best_result["pts"], start_index, end_index)
-                print("{}: {} {}".format(i, best_result["time"], best_result["dis"]))
+        while running:
+            start_index, end_index = segment_index, segment_index + current_segment_size
+            if end_index >= self.waypoint_count:
+                start_index -= self.waypoint_count
+                end_index -= self.waypoint_count
+            render_scene(screen, screen_size, self.waypoints, self.best_result["pts"], start_index, end_index)
 
-        segment_index += current_segment_size // 2
+            for i in range(RUNS_PER_SEGMENTS):
+                step_size = MAX_STEP_SIZE - (DELTA_STEP_SIZE * i)
+                self.best_result, new_best, self.waypoints = self.genetic_test(self.best_result, self.waypoints, self.boundary, start_index, end_index, step_size, set_new_car)
+                self.best_result["car"].physics.distance_travelled = 0
+                if self.best_result["time"] != -1 and new_best:
+                    set_new_car = False
 
-        if segment_index >= len(best_waypoints):
-            segment_index = 0
-            # segment_offset = not segment_offset
-            current_segment_size -= SEGMENT_SIZE_DELTA
-            if current_segment_size < MIN_SEGMENT_SIZE:
-                current_segment_size = MAX_SEGMENT_SIZE
-            print("Segments: {}".format(current_segment_size))
+                if new_best:
+                    render_scene(screen, screen_size, self.waypoints, self.best_result["pts"], start_index, end_index)
+                    print("{}: {} {}".format(i, self.best_result["time"], self.best_result["dis"]))
 
-            # if first_best:
-            if count >= 0:
-                # save_state(best_result, best_waypoints)
-                set_new_car = True
-                count = 0
+            segment_index += current_segment_size // 2
 
+            if segment_index >= self.waypoint_count:
+                segment_index = 0
+                # segment_offset = not segment_offset
+                current_segment_size -= SEGMENT_SIZE_DELTA
+                if current_segment_size < MIN_SEGMENT_SIZE:
+                    current_segment_size = MAX_SEGMENT_SIZE
 
-def save_state(best_result, waypoints):
-    dict = {
-        "time": best_result["time"],
-        "distance": best_result["dis"],
-        "car": {
-            "pos": best_result["car"].pos,
-            "heading": best_result["car"].heading,
-            "vel": {
-                "x": best_result["car"].physics.velocity[0],
-                "y": best_result["car"].physics.velocity[1],
+                    now = time.time()
+                    print("Steps: {} Time: {}".format(interval, now - start_step_time))
+                    start_step_time = now
+                    interval += 1
+                    if interval >= self.intervals:
+                        running = False
+                print("Segments: {}".format(current_segment_size))
+
+                print(self.TOTAL_AB)
+                print(self.TOTAL_BC)
+                print(self.TOTAL_CD)
+                print(self.TOTAL_DE)
+                print(self.TOTAL_EF)
+                print(self.TOTAL_FG)
+                print(self.TOTAL_GH)
+
+                # if first_best:
+                if count >= 0:
+                    set_new_car = True
+                    count = 0
+
+        self.save_state()
+
+    def save_state(self):
+        best_result = self.best_result
+
+        dict = {
+            "time": best_result["time"],
+            "distance": best_result["dis"],
+            "car": {
+                "pos": [best_result["car"].pos[0], best_result["car"].pos[1]],
+                "heading": best_result["car"].heading,
+                "vel": {
+                    "x": best_result["car"].physics.velocity[0],
+                    "y": best_result["car"].physics.velocity[1],
+                },
+                "acc": {
+                    "x": best_result["car"].physics.accel[0],
+                    "y": best_result["car"].physics.accel[1],
+                },
+                "yaw_rate": best_result["car"].physics.yaw_rate
             },
-            "acc": {
-                "x": best_result["car"].physics.accel[0],
-                "y": best_result["car"].physics.accel[1],
-            },
-            "yaw_rate": best_result["car"].physics.yaw_rate
-        },
-        "waypoints": [{
-            "x1": waypoint.line[0],
-            "y1": waypoint.line[1],
-            "x2": waypoint.line[2],
-            "y2": waypoint.line[3],
-            "throttle": waypoint.throttle,
-            "pos": waypoint.optimum
-        } for waypoint in waypoints]
-    }
+            "waypoints": [{
+                "x1": waypoint.line[0],
+                "y1": waypoint.line[1],
+                "x2": waypoint.line[2],
+                "y2": waypoint.line[3],
+                "throttle": waypoint.throttle,
+                "pos": waypoint.optimum
+            } for waypoint in self.waypoints]
+        }
 
-    print(dict)
+        x = requests.post(URL_POST, data={
+            "name": self.name,
+            "uuid": self.uuid,
+            "data": json.dumps(dict)
+        })
+        print("Sending data to server: " + str(x.status_code))
 
+    def try_track(self, waypoints, initial_car, boundary):
+        car = copy.deepcopy(initial_car)
+        lap_2_car = None
+        start_lap = 0
+        episode_time = 0
 
-def genetic_test(best_values, waypoints: List[Waypoint], boundary, start_index, end_index, step_size, set_new_car: bool = False):
-    new_best = False
-    initial_waypoints = copy.deepcopy(waypoints)
-    best_waypoints = copy.deepcopy(waypoints)
+        lap_time = -1
+        lap_count = 0
+        points = []
+        timed_points = []
 
-    waypoint_variations = variate_waypoint_fingerprint(initial_waypoints, step_size, start_index, end_index, best_values["time"] != -1)
-    waypoint_variate = waypoint_variations["waypoints"]
-    car_result = try_waypoints(waypoint_variate, best_values["car"], boundary)
+        alive = True
+        ep_count = 0
+        completed_lap = False
 
-    if car_result["time"] != -1:
-        if not set_new_car:
-            car_result["car"] = best_values["car"]
+        while alive:
+            time_a = time.time()
+            intersected_a, intersected_b = has_intersected(car,
+                waypoints[(car.waypoint_index + 1) % len(waypoints)].line,
+                waypoints[(car.waypoint_index + 2) % len(waypoints)].line
+            )
+            if intersected_a:
+                car.waypoint_index += 1
+            elif intersected_b:
+                car.waypoint_index += 2
+            if car.waypoint_index > len(waypoints): car.waypoint_index -= len(waypoints)
 
-        if best_values["time"] == -1 or car_result["time"] < best_values["time"]:
-            best_waypoints = copy.deepcopy(waypoint_variate)
-            best_values = car_result
-            new_best = True
-        elif time == best_values["time"] and car_result["dis"] > best_values["dis"]:
-            best_waypoints = copy.deepcopy(waypoint_variate)
-            best_values = car_result
-            new_best = True
-    else:
-        # if the car did not put in a time and there is no best time
-        if best_values["time"] == -1:
-            if car_result["dis"] > best_values["dis"]:
+            throttle_control_index = car.waypoint_index + 1
+            target_waypoint_index = car.waypoint_index + 2
+
+            time_b = time.time()
+            if car.waypoint_index > len(waypoints) - 1:
+                lap_count += 1
+                car.waypoint_index = 0
+                if lap_count == 1:
+                    start_lap = episode_time
+                    lap_2_car = copy.deepcopy(car)
+                elif lap_count == 2:
+                    lap_time = episode_time - start_lap
+                    alive = False
+                    completed_lap = True
+                    points = timed_points
+
+            time_c = time.time()
+            if lap_count < 2:
+                speed_target_waypoint = waypoints[throttle_control_index % len(waypoints)]
+                target_waypoint = waypoints[target_waypoint_index % len(waypoints)]
+                target_point = target_waypoint.get_optimum_point()
+
+                time_d = time.time()
+                delta_angle = angle_difference(geometry.angle_to(car.pos, target_point), car.heading) / car.max_steer
+                if delta_angle > 1: delta_angle = 1
+                if delta_angle < -1: delta_angle = -1
+
+                time_e = time.time()
+                car.steer = delta_angle
+                car.throttle, car.brake = max(0, speed_target_waypoint.throttle), -min(0, speed_target_waypoint.throttle)
+
+                last_position = [car.pos[0], car.pos[1]]
+                car.physics.update(DELTA_TIME)
+                current_point = [car.pos[0], car.pos[1]]
+
+                time_f = time.time()
+                if ep_count % 10 == 0:
+                    point = [{"pos": current_point, "thr": speed_target_waypoint.throttle}]
+                    points += point
+                    if lap_count == 1:
+                        timed_points += point
+
+                if episode_time > 5 and sum(car.physics.distances_travelled) < 5:
+                    alive = False
+
+                delta_line = current_point + last_position
+                filtered_boundary = geometry.filter_lines_by_distance(current_point, 10, boundary)
+                time_g = time.time()
+                intersections = geometry.segment_intersections(delta_line, filtered_boundary)
+                if len(intersections) > 0:
+                    alive = False
+                time_h = time.time()
+
+                self.TOTAL_AB += time_b - time_a
+                self.TOTAL_BC += time_c - time_b
+                self.TOTAL_CD += time_d - time_c
+                self.TOTAL_DE += time_e - time_d
+                self.TOTAL_EF += time_f - time_e
+                self.TOTAL_FG += time_g - time_f
+                self.TOTAL_GH += time_h - time_g
+
+            ep_count += 1
+            episode_time += DELTA_TIME
+        distance = car.physics.distance_travelled
+
+        return {
+            "time": lap_time,
+            "dis": 0 if distance < 2 else distance,
+            "pts": points,
+            "car": lap_2_car if lap_count > 1 else None
+        }
+
+    def genetic_test(self, best_values, waypoints: List[Waypoint], boundary, start_index, end_index, step_size, set_new_car: bool = False):
+        new_best = False
+        initial_waypoints = copy.deepcopy(waypoints)
+        best_waypoints = copy.deepcopy(waypoints)
+
+        waypoint_variations = variate_waypoint_fingerprint(initial_waypoints, step_size, start_index, end_index, best_values["time"] != -1)
+        waypoint_variate = waypoint_variations["waypoints"]
+        car_result = self.try_track(waypoint_variate, best_values["car"], boundary)
+
+        if car_result["time"] != -1:
+            if not set_new_car:
+                car_result["car"] = best_values["car"]
+
+            if best_values["time"] == -1 or car_result["time"] < best_values["time"]:
                 best_waypoints = copy.deepcopy(waypoint_variate)
-                best_values["time"] = car_result["time"]
-                best_values["dis"] = car_result["dis"]
-                best_values["pts"] = car_result["pts"]
-                if car_result["car"] != None:
-                    best_values["car"] = car_result["car"]
+                best_values = car_result
                 new_best = True
+            elif time == best_values["time"] and car_result["dis"] > best_values["dis"]:
+                best_waypoints = copy.deepcopy(waypoint_variate)
+                best_values = car_result
+                new_best = True
+        else:
+            # if the car did not put in a time and there is no best time
+            if best_values["time"] == -1:
+                if car_result["dis"] > best_values["dis"]:
+                    best_waypoints = copy.deepcopy(waypoint_variate)
+                    best_values["time"] = car_result["time"]
+                    best_values["dis"] = car_result["dis"]
+                    best_values["pts"] = car_result["pts"]
+                    if car_result["car"] is not None:
+                        best_values["car"] = car_result["car"]
+                    new_best = True
 
-    # best_waypoints = copy.deepcopy(waypoint_variate)
-    # best_values["time"] = car_result["time"]
-    # best_values["dis"] = car_result["dis"]
-    # best_values["pts"] = car_result["pts"]
+        # best_waypoints = copy.deepcopy(waypoint_variate)
+        # best_values["time"] = car_result["time"]
+        # best_values["dis"] = car_result["dis"]
+        # best_values["pts"] = car_result["pts"]
 
-    return best_values, new_best, best_waypoints
+        return best_values, new_best, best_waypoints
 
 
 def variate_waypoint_fingerprint(waypoints, step_size, start, end, variate_pos):
@@ -186,15 +306,27 @@ def variate_waypoint_fingerprint(waypoints, step_size, start, end, variate_pos):
     }
 
 
-def try_waypoints(waypoints, initial_car, boundary):
-    time, distance, tracked_positions, car = try_track(initial_car, waypoints, boundary)
+def get_track():
+    result = requests.get(URL_NEW)
+    server_data = json.loads(result.text)
+    name = server_data["name"]
+    print(name)
+    uuid = server_data["uuid"]
+    intervals = server_data["intervals"]
 
-    return {
-        "time": time,
-        "dis": distance,
-        "pts": tracked_positions,
-        "car": car
-    }
+    track = Track().from_json(server_data["data"])
+    initial_car = track.cars[0]
+
+    initial_car.waypoint_index = -1
+    initial_car.last_interval_update = 0
+
+    left_boundary, right_boundary, orange_boundary = track.get_boundary()
+
+    if ".reversed" in name:
+        initial_car.heading += math.pi
+        left_boundary, right_boundary = right_boundary, left_boundary
+
+    return name, uuid, initial_car, left_boundary, right_boundary, orange_boundary, intervals
 
 
 def get_best_position_throttle(position_throttle_matrix):
@@ -213,79 +345,6 @@ def get_best_position_throttle(position_throttle_matrix):
                 if current["dis"] > best["dis"]:
                     best = current
     return best
-
-
-def try_track(initial_car, waypoints, boundary):
-    car = copy.deepcopy(initial_car)
-    lap_2_car = None
-    start_lap = 0
-    episode_time = 0
-
-    lap_time = -1
-    lap_count = 0
-    points = []
-    timed_points = []
-
-    alive = True
-    ep_count = 0
-    completed_lap = False
-    while alive:
-        if has_intersected(car, waypoints[(car.waypoint_index + 1) % len(waypoints)].line):
-            car.waypoint_index += 1
-        elif has_intersected(car, waypoints[(car.waypoint_index + 2) % len(waypoints)].line):
-            car.waypoint_index += 2
-        if car.waypoint_index > len(waypoints): car.waypoint_index -= len(waypoints)
-
-        throttle_control_index = car.waypoint_index + 1
-        target_waypoint_index = car.waypoint_index + 2
-
-        if car.waypoint_index > len(waypoints) - 1:
-            lap_count += 1
-            car.waypoint_index = 0
-            if lap_count == 1:
-                start_lap = episode_time
-                lap_2_car = copy.deepcopy(car)
-            elif lap_count == 2:
-                lap_time = episode_time - start_lap
-                alive = False
-                completed_lap = True
-                points = timed_points
-
-        if lap_count < 2:
-            speed_target_waypoint = waypoints[throttle_control_index % len(waypoints)]
-            target_waypoint = waypoints[target_waypoint_index % len(waypoints)]
-            target_point = target_waypoint.get_optimum_point()
-
-            delta_angle = angle_difference(geometry.angle_to(car.pos, target_point), car.heading) / car.max_steer
-            if delta_angle > 1: delta_angle = 1
-            if delta_angle < -1: delta_angle = -1
-
-            car.steer = delta_angle
-            car.throttle, car.brake = max(0, speed_target_waypoint.throttle), -min(0, speed_target_waypoint.throttle)
-
-            last_position = [car.pos[0], car.pos[1]]
-            car.physics.update(DELTA_TIME)
-            current_point = [car.pos[0], car.pos[1]]
-
-            if ep_count % 10 == 0:
-                point = [{"pos": current_point, "thr": speed_target_waypoint.throttle}]
-                points += point
-                if lap_count == 1:
-                    timed_points += point
-
-            if episode_time > 5 and sum(car.physics.distances_travelled) < 5:
-                alive = False
-
-            delta_line = current_point + last_position
-            filtered_boundary = geometry.filter_lines_by_distance(current_point, 10, boundary)
-            intersections = geometry.segment_intersections(delta_line, filtered_boundary)
-            if len(intersections) > 0:
-                alive = False
-
-        ep_count += 1
-        episode_time += DELTA_TIME
-    distance = car.physics.distance_travelled
-    return lap_time, 0 if distance < 2 else distance, points, lap_2_car if lap_count > 1 else None
 
 
 def save_best(name, best_waypoints):
@@ -315,7 +374,7 @@ def generate_waypoints(initial_car, left_boundary, right_boundary, orange_bounda
     )
     decimated_waypoints = []
     for i in range(len(waypoints)):
-        if i % 2 != 3:
+        if i % 2 != 0:
             decimated_waypoints.append(waypoints[i])
     # decimated_waypoints = decimate_waypoints(decimated_waypoints, threshold = 0.35, spread=1, max_gap = 4)
     # decimated_waypoints = waypoints
@@ -325,7 +384,7 @@ def generate_waypoints(initial_car, left_boundary, right_boundary, orange_bounda
     return decimated_waypoints
 
 
-def has_intersected(car, line):
+def has_intersected(car, line_a, line_b):
     body_points = [
         (car.pos[0] + car.cg_to_front, car.pos[1] - (car.width + car.wheel_width) / 2),
         (car.pos[0] + car.cg_to_front, car.pos[1] + (car.width + car.wheel_width) / 2),
@@ -337,18 +396,17 @@ def has_intersected(car, line):
         body_points[i] = geometry.rotate(body_points[i], car.heading, car.pos)
 
     car_boundary = [
-        [body_points[0][0], body_points[0][1], body_points[1][0], body_points[1][1]],
+        [body_points[0][0], body_points[0][1], body_points[3][0], body_points[3][1]],
         [body_points[1][0], body_points[1][1], body_points[2][0], body_points[2][1]],
-        [body_points[2][0], body_points[2][1], body_points[3][0], body_points[3][1]],
-        [body_points[3][0], body_points[3][1], body_points[0][0], body_points[0][1]],
     ]
 
-    intersections = geometry.segment_intersections(car_boundary[0], [line]) + \
-                    geometry.segment_intersections(car_boundary[1], [line]) + \
-                    geometry.segment_intersections(car_boundary[2], [line]) + \
-                    geometry.segment_intersections(car_boundary[3], [line])
+    intersections_a = geometry.segment_intersections(car_boundary[0], [line_a]) + \
+                    geometry.segment_intersections(car_boundary[1], [line_a])
 
-    return len(intersections) > 0
+    intersections_b = geometry.segment_intersections(car_boundary[0], [line_b]) + \
+                    geometry.segment_intersections(car_boundary[1], [line_b])
+
+    return len(intersections_a) > 0, len(intersections_b) > 0
 
 
 def angle_difference(angle_a, angle_b):
@@ -408,4 +466,4 @@ def render_scene(screen, screen_size, waypoints, best_points, start_var, end_var
 
 
 if __name__ == "__main__":
-    run()
+    OptimalPathCreator().run()
