@@ -1,4 +1,4 @@
-from libc.math cimport atan2, round, sin, cos, sqrt
+from libc.math cimport atan2, round, sin, cos, sqrt, pi, pow
 import cython
 
 cpdef float distance(a, b):
@@ -25,6 +25,15 @@ cpdef rotate(point, float angle, around):
 
 cpdef float angle_to(a, b):
     return atan2(b[1] - a[1], b[0] - a[0])
+
+cpdef float angle3(a, b, c):
+    cdef float a_x = a[0]
+    cdef float a_y = a[1]
+    cdef float b_x = b[0]
+    cdef float b_y = b[1]
+    cdef float c_x = c[0]
+    cdef float c_y = c[1]
+    return atan2(c_y - b_y, c_x - b_x) - atan2(a_y - b_y, a_x - b_x) + (2 * pi) % (2 * pi) - pi
 
 
 cpdef float angle(line):
@@ -245,3 +254,48 @@ cpdef circle_line_intersections(point, float radius, lines):
                 intersections.append([p_x, p_y])
 
     return intersections
+
+
+cpdef float findCircleRadius(float x1, float y1, float x2, float y2, float x3, float y3):
+    cdef float x12 = x1 - x2
+    cdef float x13 = x1 - x3
+
+    cdef float y12 = y1 - y2
+    cdef float y13 = y1 - y3
+
+    cdef float y31 = y3 - y1
+    cdef float y21 = y2 - y1
+
+    cdef float x31 = x3 - x1
+    cdef float x21 = x2 - x1
+
+    # x1^2 - x3^2
+    cdef float sx13 = pow(x1, 2) - pow(x3, 2)
+
+    # y1^2 - y3^2
+    cdef float sy13 = pow(y1, 2) - pow(y3, 2)
+
+    cdef float sx21 = pow(x2, 2) - pow(x1, 2)
+    cdef float sy21 = pow(y2, 2) - pow(y1, 2)
+
+    cdef float f = ((sx13 * x12 + sy13 * x12 + sx21 * x13 +
+          sy21 * x13) // (2 *
+                              ((y31) * (x12) - (y21) * (x13))))
+
+    cdef float g = (((sx13) * (y12) + (sy13) * (y12) +
+          (sx21) * (y13) + (sy21) * (y13)) //
+         (2 * ((x31) * (y12) - (x21) * (y13))))
+
+    cdef float c = (-pow(x1, 2) - pow(y1, 2) -
+         2 * g * x1 - 2 * f * y1)
+
+    # eqn of circle be x^2 + y^2 + 2*g*x + 2*f*y + c = 0
+    # where centre is (h = -g, k = -f) and
+    # radius r as r^2 = h^2 + k^2 - c
+    cdef float h = -g
+    cdef float k = -f
+    cdef float sqr_of_r = h * h + k * k - c
+
+    # r is the radius
+    r = sqrt(sqr_of_r)
+    return r

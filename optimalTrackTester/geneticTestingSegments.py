@@ -15,8 +15,8 @@ from fsai.visualisation.draw_pygame import render
 from fsai.path_planning.waypoints import gen_waypoints, encode, decimate_waypoints
 from fsai import geometry
 
-URL_NEW = "http://127.0.0.1/new/"
-URL_POST = "http://127.0.0.1/save/"
+URL_NEW = "http://127.0.0.1:8080/new/"
+URL_POST = "http://127.0.0.1:8080/save/"
 
 DELTA_TIME = 0.01
 
@@ -374,10 +374,9 @@ def generate_waypoints(initial_car, left_boundary, right_boundary, orange_bounda
     )
     decimated_waypoints = []
     for i in range(len(waypoints)):
-        if i % 2 != 0:
+        if i % 2 != 3:
             decimated_waypoints.append(waypoints[i])
-    # decimated_waypoints = decimate_waypoints(decimated_waypoints, threshold = 0.35, spread=1, max_gap = 4)
-    # decimated_waypoints = waypoints
+    decimated_waypoints = decimate_waypoints(decimated_waypoints, threshold = 0.35, spread=1, max_gap = 4)
     for waypoint in decimated_waypoints:
         waypoint.optimum = 0.5
         waypoint.throttle = 0.1
@@ -386,25 +385,20 @@ def generate_waypoints(initial_car, left_boundary, right_boundary, orange_bounda
 
 def has_intersected(car, line_a, line_b):
     body_points = [
-        (car.pos[0] + car.cg_to_front, car.pos[1] - (car.width + car.wheel_width) / 2),
-        (car.pos[0] + car.cg_to_front, car.pos[1] + (car.width + car.wheel_width) / 2),
-        (car.pos[0] - car.cg_to_rear, car.pos[1] + (car.width + car.wheel_width) / 2),
-        (car.pos[0] - car.cg_to_rear, car.pos[1] - (car.width + car.wheel_width) / 2)
+        (car.pos[0] + car.cg_to_front, car.pos[1]),
+        (car.pos[0] - car.cg_to_rear, car.pos[1]),
     ]
 
     for i in range(len(body_points)):
         body_points[i] = geometry.rotate(body_points[i], car.heading, car.pos)
 
     car_boundary = [
-        [body_points[0][0], body_points[0][1], body_points[3][0], body_points[3][1]],
-        [body_points[1][0], body_points[1][1], body_points[2][0], body_points[2][1]],
+        [body_points[0][0], body_points[0][1], body_points[1][0], body_points[1][1]],
     ]
 
-    intersections_a = geometry.segment_intersections(car_boundary[0], [line_a]) + \
-                    geometry.segment_intersections(car_boundary[1], [line_a])
+    intersections_a = geometry.segment_intersections(car_boundary[0], [line_a])
 
-    intersections_b = geometry.segment_intersections(car_boundary[0], [line_b]) + \
-                    geometry.segment_intersections(car_boundary[1], [line_b])
+    intersections_b = geometry.segment_intersections(car_boundary[0], [line_b])
 
     return len(intersections_a) > 0, len(intersections_b) > 0
 

@@ -4,16 +4,17 @@ import os
 import time
 import uuid
 
-import waitress
 from flask import Flask, escape, request, Response, abort
 
 app = Flask(__name__)
 
-MAX_ITERATIONS = 50
+MAX_ITERATIONS = 100
 
-completed_folder = "C:\\Users\\SamGa\\Documents\\GitHub\\OFSAI-Toolkit\\server_testing\\annotated\\"
-tracks_folder = "C:\\Users\\SamGa\\Documents\\GitHub\\OFSAI-Toolkit\\server_testing\\tracks\\"
-processing_folder = "C:\\Users\\SamGa\\Documents\\GitHub\\OFSAI-Toolkit\\server_testing\\processing\\"
+root_path = "/Users/samgarlick/Developer/GitHub/OS-FS-AI/server_testing/"
+
+completed_folder = root_path + "annotated/"
+tracks_folder = root_path + "tracks/"
+processing_folder = root_path + "processing/"
 
 overview_code = """
 <!DOCTYPE html>
@@ -181,4 +182,4 @@ def get_track_name(track_data):
 
 
 if __name__ == "__main__":
-    app.run(port=80, debug=True)
+    app.run(port=8080, debug=True)
