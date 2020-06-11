@@ -9,75 +9,60 @@ from fsai.path_planning.waypoint import Waypoint
 from fsai.path_planning.waypoints import gen_waypoints, encode
 from fsai.visualisation.draw_opencv import render, render_area
 from fsai import geometry
+from optimalTrackTester.geneticTestUtils import get_track_time
 
-negative_waypoints = 0
 
-def segment_intersections(line, segments):
-    min_x_seg = min(line[0], line[2])
-    min_y_seg = min(line[1], line[3])
-    max_x_seg = max(line[0], line[2])
-    max_y_seg = max(line[1], line[3])
+def generate_waypoints(initial_car, left_boundary, right_boundary, orange_boundary):
+    waypoints = gen_waypoints(
+        car_pos=initial_car.pos,
+        car_angle=initial_car.heading,
+        blue_boundary=left_boundary,
+        yellow_boundary=right_boundary,
+        orange_boundary=orange_boundary,
+        full_track=True,
+        spacing=1,
+        radar_length=30,
+        radar_count=17,
+        radar_span=math.pi / 1.1,
+        margin=0,
+        smooth=True
+    )
 
-    # convert fixed lines into y=mx+c ordinates
-    a1 = line[3] - line[1]
-    b1 = line[0] - line[2]
-    c1 = a1 * line[0] + b1 * line[1]
-
-    intersections = []
-    delta = 0
-    precision = 1000
-    for index in range(len(segments)):
-        seg_i = segments[index]
-        seg_0 = seg_i[0]
-        seg_1 = seg_i[1]
-        seg_2 = seg_i[2]
-        seg_3 = seg_i[3]
-
-        a2 = seg_3 - seg_1
-        b2 = seg_0 - seg_2
-        c2 = a2 * seg_0 + b2 * seg_1
-        delta = a1 * b2 - a2 * b1
-        print(a2)
-        print(b2)
-        print(c2)
-        print(delta)
-
-        if delta != 0:
-            x = (b2 * c1 - b1 * c2) / delta
-            y = (a1 * c2 - a2 * c1) / delta
-            print(x)
-            print(y)
-
-            # check the point exists within the
-            min_x = round(precision * max(min(seg_0, seg_2), min_x_seg))
-            min_y = round(precision * max(min(seg_1, seg_3), min_y_seg))
-            max_x = round(precision * min(max(seg_0, seg_2), max_x_seg))
-            max_y = round(precision * min(max(seg_1, seg_3), max_y_seg))
-
-            if min_x <= round(precision * x) <= max_x and min_y <= round(precision * y) <= max_y:
-                intersections.append([x, y])
-    return intersections
+    for waypoint in waypoints:
+        waypoint.optimum = 0.5 #random.random()
+    return waypoints
 
 
 if __name__ == "__main__":
-    track = Track("examples/data/tracks/imola.json")
+    track = Track("examples/data/tracks/azure_circuit.json")
     initial_car = track.cars[0]
     left_boundary, right_boundary, o = track.get_boundary()
+    waypoints = generate_waypoints(initial_car, left_boundary, right_boundary, o)
 
-    polygons = get_delaunay_triangles(track.blue_cones, track.yellow_cones, track.orange_cones, track.big_cones)
+    time = get_track_time(waypoints, 1.7 * 9.81 * 0.74, 104.1667)
 
-    print(polygons)
+    waypoint_lines = []
+    for w_index in range(len(waypoints)):
+        cw = waypoints[w_index].get_optimum_point()
+        nw = waypoints[w_index + 1 - len(waypoints)].get_optimum_point()
 
+        v = 0.5
+        try:
+            v = waypoints[w_index].v / 26
+        except:
+            pass
+
+        r = min(255, 510 - int(510 * v))
+        g = min(255, 0 + int(510 * v))
+        c = (g, r, 0)
+
+        waypoint_lines.append((c, 2, [cw + nw]))
+
+    print(waypoint_lines)
+    print(time)
     image = render(
-        [1000, 1000],
-        polygons=[
-            ((255, 255, 255), (0, 0, 0), 0, polygons)
-        ],
-        lines=[
-            ((255, 0, 0), 2, left_boundary),
-            ((0, 255, 255), 2, right_boundary),
-        ],
-        cars=track.cars,
+        [1000, 500],
+        lines=waypoint_lines,
         padding=10,
         background=0
     )

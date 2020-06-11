@@ -26,11 +26,12 @@ class OptimalPathStandardEvolver:
         self.initial_waypoints = generate_waypoints(self.initial_car, left_boundary, right_boundary, orange_boundary)
         self.waypoint_count = len(self.initial_waypoints)
 
-        car_mass = 1  # tonne
+        car_mass = 0.74  # tonne
         gravity = 9.81
-        frictional_force = 1.5
+        frictional_force = 1.7
+
         self.max_lateral_frictional_force = frictional_force * gravity * car_mass
-        self.max_speed = 26  # meters per second
+        self.max_speed = 104  # meters per second
 
         random.seed(0)
 
