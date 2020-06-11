@@ -58,6 +58,7 @@ class OptimalPathStandardEvolver:
             screen = pygame.display.set_mode(screen_size)
             render_scene(screen, screen_size, [w["track"] for w in self.waypoint_variations], line_width=1)
 
+        now = time.time()
         for i in range(self.intervals):
             for segment in range(SEGMENTS):
                 self.evaluate_waypoints()
@@ -68,6 +69,11 @@ class OptimalPathStandardEvolver:
                 if i % 100 == 0 and RENDER:
                     render_scene(screen, screen_size, [w["track"] for w in waypoint_variations], line_width=1)
                 print("{}/{}: {}".format(i, self.intervals, best_time))
+
+        print("Finished in {} seconds.".format(time.time() - now))
+        best_time, best_waypoints = self.get_best_waypoints()
+
+        send_track_to_server(self.name, best_waypoints[0], best_time, self.uuid)
 
     def evaluate_waypoints(self):
         for track in self.waypoint_variations:
