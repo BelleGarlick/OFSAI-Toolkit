@@ -13,7 +13,7 @@ class Waypoint:
         self.throttle = 0
 
     def get_optimum_point(self):
-        return geometry.add(self.line[0:2], geometry.scale(geometry.sub(self.line[2:4], self.line[0:2]), self.optimum))
+        return geometry.get_point_from_rel_pos_on_line(self.line[0], self.line[1], self.line[2], self.line[3], self.optimum)
 
     def copy(self):
         return Waypoint(line=self.line.copy(), sticky=self.sticky, optimum=self.optimum)

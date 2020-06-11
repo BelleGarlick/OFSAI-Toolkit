@@ -1,5 +1,7 @@
 from libc.math cimport atan2, round, sin, cos, sqrt, pi, pow
+from libc.stdlib cimport rand, RAND_MAX
 import cython
+from fsai.path_planning.waypoint import Waypoint
 
 cpdef float distance(a, b):
     return cdistance(a[0], a[1], b[0], b[1])
@@ -256,7 +258,24 @@ cpdef circle_line_intersections(point, float radius, lines):
     return intersections
 
 
-cpdef float findCircleRadius(float x1, float y1, float x2, float y2, float x3, float y3):
+cpdef get_point_from_rel_pos_on_line(float x1, float y1, float x2, float y2, float position):
+    cdef float dx = x2 - x1
+    cdef float dy = y2 - y1
+    dx *= position
+    dy *= position
+    cdef float x = x1 + dx
+    cdef float y = y1 + dy
+
+    return [x, y]
+
+
+@cython.cdivision(True)
+cpdef float find_circle_radius(float x1, float y1, float x2, float y2, float x3, float y3):
+    return c_find_circle_radius(x1, y1, x2, y2, x3, y3)
+
+
+@cython.cdivision(True)
+cdef float c_find_circle_radius(float x1, float y1, float x2, float y2, float x3, float y3):
     cdef float x12 = x1 - x2
     cdef float x13 = x1 - x3
 
@@ -278,13 +297,16 @@ cpdef float findCircleRadius(float x1, float y1, float x2, float y2, float x3, f
     cdef float sx21 = pow(x2, 2) - pow(x1, 2)
     cdef float sy21 = pow(y2, 2) - pow(y1, 2)
 
-    cdef float f = ((sx13 * x12 + sy13 * x12 + sx21 * x13 +
-          sy21 * x13) // (2 *
-                              ((y31) * (x12) - (y21) * (x13))))
+    cdef float f_demon = 2 * (y31 * x12 - y21 * x13)
+    if f_demon == 0:
+        f_demon = 0.00001
+    cdef float f = (sx13 * x12 + sy13 * x12 + sx21 * x13 + sy21 * x13) // f_demon
 
-    cdef float g = (((sx13) * (y12) + (sy13) * (y12) +
-          (sx21) * (y13) + (sy21) * (y13)) //
-         (2 * ((x31) * (y12) - (x21) * (y13))))
+    cdef float g_denom = 2 * (x31 * y12 - x21 * y13)
+    if g_denom == 0:
+        g_denom = 0.00001
+    cdef float g = (sx13 * y12 + sy13 * y12 + sx21 * y13 + sy21 * y13) // g_denom
+
 
     cdef float c = (-pow(x1, 2) - pow(y1, 2) -
          2 * g * x1 - 2 * f * y1)
@@ -299,3 +321,51 @@ cpdef float findCircleRadius(float x1, float y1, float x2, float y2, float x3, f
     # r is the radius
     r = sqrt(sqr_of_r)
     return r
+
+
+cpdef get_corner_radii_for_points(points):
+    cdef float px, py, cx, cy, nx, ny
+    radii = []
+    lengths = []
+    cdef size_t index
+    for index in range(1, len(points) - 1):
+        px, py = points[index - 1]
+        cx, cy = points[index]
+        nx, ny = points[index + 1]
+
+        radii.append(c_find_circle_radius(px, py, cx, cy, nx, ny))
+        lengths.append(cdistance(cx, cy, nx, ny))
+
+    return radii, lengths
+
+cpdef get_max_velocities_from_corners(radii, float max_friction, float max_speed):
+    max_velocities = []
+    cdef size_t index
+    cdef float R, Vd, V
+    for index in range(len(radii)):
+        R = radii[index]
+
+        Vd = sqrt(R * max_friction)
+        Vd = cmin(Vd, max_speed)
+        V = Vd * 1
+        max_velocities.append(V)
+    return max_velocities
+
+
+@cython.cdivision(True)
+cpdef variate_waypoints(waypoints, float step_size, int start_bound, int end_bound):
+    cdef size_t index
+    cdef float random_value
+    cdef new_waypoint
+    cdef float max_rand = RAND_MAX
+    new_waypoints = []
+    for index in range(len(waypoints)):
+        if start_bound <= index <= end_bound:
+            random_value = rand() / max_rand
+            random_value = (random_value * 2 - 1) * step_size
+            random_value = cmin(1, cmax(0, waypoints[index].optimum + random_value))
+        else:
+            random_value = waypoints[index].optimum
+
+        new_waypoints.append(Waypoint(line=waypoints[index].line, optimum=random_value))
+    return new_waypoints
