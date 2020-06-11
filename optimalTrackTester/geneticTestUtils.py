@@ -87,8 +87,8 @@ def get_track_time(waypoints, max_frictional_force, max_speed):
 
     velocities = geometry.get_max_velocities_from_corners(radii, max_frictional_force, max_speed)
 
-    velocities = smooth_velocity(velocities)
-    velocities = smooth_velocity(velocities)
+    for i in range(10):
+        velocities = smooth_velocity(velocities)
 
     for i in range(len(velocities)):
         waypoints[i].v = velocities[i]
@@ -111,9 +111,11 @@ def smooth_velocity(velocities):
         nv = velocities[(i + 1) % vel_length]
         v = cv
         if nv < cv:
-            v = (cv + nv + nv + nv) / 4
+            print("{} {}".format(nv, cv))
+            v = nv + (cv - nv) * 0.95  # higher value means better brakes
+            cv = v
         if pv < cv:
-            v = (cv + pv + pv) / 3
+            v = pv + (cv - pv) * 0.3  # higher bias means faster acceleration
         new_velocities.append(v)
     return new_velocities
 
